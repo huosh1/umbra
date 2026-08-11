@@ -73,6 +73,9 @@ end;
 function PrepareToInstall(var NeedsRestart: Boolean): String;
 var
   DataDirectory: String;
+  WatchdogPidPath: String;
+  WatchdogStoppedPath: String;
+  Attempt: Integer;
 begin
   { New BrowserHost versions observe this marker and close their own pipe.
     The Restart Manager configured above remains the compatibility path for
@@ -81,6 +84,24 @@ begin
   ForceDirectories(DataDirectory);
   SaveStringToFile(DataDirectory + '\browser-host.stop-request',
     GetDateTimeString('yyyy-mm-dd hh:nn:ss', '-', ':'), False);
+
+  { A manual repair/update does not pass through App.CheckForUpdatesAsync,
+    so it must also stop the elevated watchdog before replacing the shared
+    self-contained .NET runtime files (for example clrjit.dll). }
+  WatchdogPidPath := DataDirectory + '\watchdog.pid';
+  WatchdogStoppedPath := DataDirectory + '\watchdog.stopped';
+  if FileExists(WatchdogPidPath) then
+  begin
+    DeleteFile(WatchdogStoppedPath);
+    SaveStringToFile(DataDirectory + '\watchdog.stop-request',
+      GetDateTimeString('yyyy-mm-dd hh:nn:ss', '-', ':'), False);
+    for Attempt := 1 to 50 do
+    begin
+      if FileExists(WatchdogStoppedPath) or (not FileExists(WatchdogPidPath)) then
+        Break;
+      Sleep(200);
+    end;
+  end;
   Sleep(1000);
   Result := '';
 end;
@@ -112,11 +133,18 @@ begin
   DeleteFile(ExpandConstant('{userappdata}\UmbraNative\data\browser-host.stop-request'));
 end;
 
+procedure ClearWatchdogStopSignals;
+begin
+  DeleteFile(ExpandConstant('{userappdata}\UmbraNative\data\watchdog.stop-request'));
+  DeleteFile(ExpandConstant('{userappdata}\UmbraNative\data\watchdog.stopped'));
+end;
+
 procedure CurStepChanged(CurStep: TSetupStep);
 begin
   if CurStep = ssPostInstall then
   begin
     ClearBrowserHostStopRequest;
+    ClearWatchdogStopSignals;
     WriteNativeHostManifest;
   end;
 end;
@@ -125,6 +153,7 @@ procedure DeinitializeSetup;
 begin
   { Never leave browser integration paused after a cancelled or failed setup. }
   ClearBrowserHostStopRequest;
+  ClearWatchdogStopSignals;
 end;
 
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
