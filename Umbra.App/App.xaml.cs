@@ -15,6 +15,7 @@ public partial class App : Application
     private DispatcherTimer? _reminderTimer;
     private DateTime? _lastReminderDate;
     private readonly SemaphoreSlim _updateGate = new(1, 1);
+    private SingleInstanceCoordinator? _singleInstance;
 
     public string InstalledVersion { get; } = GetInstalledVersion();
     public UpdateUiStatus UpdateStatus { get; private set; } = new(UpdatePhase.Idle, GetInstalledVersion());
@@ -33,6 +34,17 @@ public partial class App : Application
             // le process en vie sans fenêtre.
             _watchdogCts = new CancellationTokenSource();
             _ = WatchdogLoop.RunAsync(NotifyPlaceholder, _watchdogCts.Token);
+            return;
+        }
+
+        _singleInstance = new SingleInstanceCoordinator("UmbraNative.Desktop");
+        if (!_singleInstance.IsPrimary)
+        {
+            // The pinned taskbar shortcut starts the executable again after
+            // the dashboard was hidden to the tray. Wake the existing
+            // process, then end this short-lived secondary process.
+            _singleInstance.SignalPrimary();
+            Shutdown();
             return;
         }
 
@@ -57,6 +69,8 @@ public partial class App : Application
             _dashboard.Hide();
         };
         _dashboard.Show();
+
+        _singleInstance.Listen(RequestDashboardActivation);
 
         _trayIcon = new TrayIcon(_dashboard, "Umbra");
         _trayIcon.DoubleClicked += ShowDashboard;
@@ -83,6 +97,18 @@ public partial class App : Application
         _dashboard.Show();
         _dashboard.WindowState = WindowState.Normal;
         _dashboard.Activate();
+        // Activate() can be denied when another process initiated the request.
+        // Briefly toggling Topmost reliably brings the existing WPF window
+        // forward without leaving it permanently above other applications.
+        _dashboard.Topmost = true;
+        _dashboard.Topmost = false;
+        _dashboard.Focus();
+    }
+
+    private void RequestDashboardActivation()
+    {
+        if (_reallyQuitting || Dispatcher.HasShutdownStarted || Dispatcher.HasShutdownFinished) return;
+        Dispatcher.BeginInvoke(ShowDashboard);
     }
 
     private void QuickStart(double minutes)
@@ -237,6 +263,7 @@ public partial class App : Application
 
     protected override void OnExit(ExitEventArgs e)
     {
+        _singleInstance?.Dispose();
         MusicHistory.Flush();
         base.OnExit(e);
     }
