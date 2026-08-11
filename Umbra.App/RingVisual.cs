@@ -12,6 +12,131 @@ namespace Umbra.App;
 // Slider classique en dessous, pour rester simple et fiable.
 public static class RingVisual
 {
+    public static Grid BuildFocusTimer(double diameter, double fraction, Brush trackBrush, Brush progressBrush,
+        string centerValue, Brush textBrush, string style)
+    {
+        return string.Equals(style, "orbit", StringComparison.OrdinalIgnoreCase)
+            ? BuildOrbit(diameter, fraction, trackBrush, progressBrush, centerValue, textBrush)
+            : BuildHalo(diameter, fraction, trackBrush, progressBrush, centerValue, textBrush);
+    }
+
+    private static Grid BuildHalo(double diameter, double fraction, Brush trackBrush, Brush progressBrush,
+        string centerValue, Brush textBrush)
+    {
+        fraction = Math.Clamp(fraction, 0, 1);
+        var grid = new Grid { Width = diameter, Height = diameter };
+        var thickness = Math.Max(6, diameter * 0.045);
+
+        var innerRing = new Ellipse
+        {
+            Width = diameter * 0.72,
+            Height = diameter * 0.72,
+            Stroke = trackBrush,
+            StrokeThickness = Math.Max(1, diameter * 0.006),
+            Opacity = 0.32,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+        grid.Children.Add(innerRing);
+        grid.Children.Add(BuildArc(diameter, thickness, 1, trackBrush));
+
+        if (fraction > 0.001)
+        {
+            var glow = BuildArc(diameter, thickness * 1.8, Math.Clamp(fraction, 0.001, 1), progressBrush);
+            glow.Opacity = 0.14;
+            grid.Children.Add(glow);
+            grid.Children.Add(BuildArc(diameter, thickness, Math.Clamp(fraction, 0.001, 1), progressBrush));
+
+            var angle = -90 + 360 * fraction;
+            var radius = diameter / 2 - thickness / 2;
+            var point = PointOnCircle(new Point(diameter / 2, diameter / 2), radius, angle);
+            var dotSize = thickness * 1.5;
+            var dot = new Ellipse { Width = dotSize, Height = dotSize, Fill = progressBrush };
+            var dotCanvas = new Canvas { Width = diameter, Height = diameter };
+            Canvas.SetLeft(dot, point.X - dotSize / 2);
+            Canvas.SetTop(dot, point.Y - dotSize / 2);
+            dotCanvas.Children.Add(dot);
+            grid.Children.Add(dotCanvas);
+        }
+
+        grid.Children.Add(BuildTimerCenter(diameter, centerValue, textBrush, progressBrush));
+        return grid;
+    }
+
+    private static Grid BuildOrbit(double diameter, double fraction, Brush trackBrush, Brush progressBrush,
+        string centerValue, Brush textBrush)
+    {
+        fraction = Math.Clamp(fraction, 0, 1);
+        var grid = new Grid { Width = diameter, Height = diameter };
+        var canvas = new Canvas { Width = diameter, Height = diameter };
+        var center = diameter / 2;
+        const int segmentCount = 24;
+        var activeSegments = (int)Math.Ceiling(fraction * segmentCount);
+
+        for (var i = 0; i < segmentCount; i++)
+        {
+            var angle = i * 2 * Math.PI / segmentCount;
+            var major = i % 6 == 0;
+            var outer = diameter / 2 - diameter * 0.045;
+            var length = major ? diameter * 0.105 : diameter * 0.075;
+            var active = i < activeSegments;
+            var marker = active && i == activeSegments - 1;
+            canvas.Children.Add(new Line
+            {
+                X1 = center + outer * Math.Sin(angle),
+                Y1 = center - outer * Math.Cos(angle),
+                X2 = center + (outer - length) * Math.Sin(angle),
+                Y2 = center - (outer - length) * Math.Cos(angle),
+                Stroke = active ? progressBrush : trackBrush,
+                StrokeThickness = marker ? Math.Max(5, diameter * 0.038) : Math.Max(3, diameter * 0.023),
+                StrokeStartLineCap = PenLineCap.Round,
+                StrokeEndLineCap = PenLineCap.Round,
+                Opacity = active ? 1 : 0.42,
+            });
+        }
+
+        grid.Children.Add(canvas);
+        grid.Children.Add(new Ellipse
+        {
+            Width = diameter * 0.62,
+            Height = diameter * 0.62,
+            Stroke = trackBrush,
+            StrokeThickness = Math.Max(1, diameter * 0.006),
+            Opacity = 0.25,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+        });
+        grid.Children.Add(BuildTimerCenter(diameter, centerValue, textBrush, progressBrush));
+        return grid;
+    }
+
+    private static StackPanel BuildTimerCenter(double diameter, string centerValue, Brush textBrush, Brush accentBrush)
+    {
+        var panel = new StackPanel
+        {
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+        panel.Children.Add(new TextBlock
+        {
+            Text = centerValue,
+            FontSize = diameter * 0.16,
+            FontWeight = FontWeights.SemiBold,
+            Foreground = textBrush,
+            HorizontalAlignment = HorizontalAlignment.Center,
+        });
+        panel.Children.Add(new Border
+        {
+            Width = diameter * 0.11,
+            Height = Math.Max(2, diameter * 0.012),
+            CornerRadius = new CornerRadius(diameter),
+            Background = accentBrush,
+            Margin = new Thickness(0, diameter * 0.035, 0, 0),
+            HorizontalAlignment = HorizontalAlignment.Center,
+        });
+        return panel;
+    }
+
     public static Grid BuildClock(double diameter, double fraction, Brush tickBrush, Brush accentBrush, string centerValue, string centerUnit, Brush textBrush)
     {
         var grid = new Grid { Width = diameter, Height = diameter };

@@ -25,6 +25,19 @@
                 </StackPanel>
             </ui:CardExpander>
 
+            <ui:CardExpander x:Name="ClockStyleExpander" Margin="0,0,0,6">
+                <ui:CardExpander.Icon>
+                    <ui:SymbolIcon Symbol="Clock24" />
+                </ui:CardExpander.Icon>
+                <ui:CardExpander.Header>
+                    <StackPanel>
+                        <TextBlock x:Name="ClockStyleTitleText" />
+                        <TextBlock x:Name="ClockStyleDescText" FontSize="12" Opacity="0.6" Margin="0,2,0,0" />
+                    </StackPanel>
+                </ui:CardExpander.Header>
+                <WrapPanel x:Name="ClockStylePanel" MinWidth="400" />
+            </ui:CardExpander>
+
             <ui:CardExpander Margin="0,0,0,6">
                 <ui:CardExpander.Icon><ui:SymbolIcon Symbol="WindowNew24" /></ui:CardExpander.Icon>
                 <ui:CardExpander.Header>

@@ -29,6 +29,8 @@ public partial class SettingsPage : UserControl
         FocusSessionsHeaderText.Text = Loc.T("settings.section.focus_sessions");
         PeriodsTitleText.Text = Loc.T("settings.periods.title");
         PeriodsDescText.Text = Loc.T("settings.periods.desc");
+        ClockStyleTitleText.Text = Loc.T("settings.clock.title");
+        ClockStyleDescText.Text = Loc.T("settings.clock.desc");
         AddPresetButton.Content = Loc.T("settings.presets.add");
         SoundSessionTitleText.Text = Loc.T("settings.sound.session.title");
         SoundSessionDescText.Text = Loc.T("settings.sound.session.desc");
@@ -94,6 +96,7 @@ public partial class SettingsPage : UserControl
         BackgroundBlurSlider.Value = _settings.BackgroundBlur;
         BackgroundModeBox.SelectedIndex = _settings.BackgroundAppearanceMode switch { "content" => 1, "navigation" => 2, _ => 0 };
         RenderPresets();
+        RenderClockStyles();
         RenderBackgroundStatus();
         RefreshStartupStatus();
         RefreshUpdateStatus();
@@ -240,6 +243,56 @@ public partial class SettingsPage : UserControl
     }
 
     private const int MaxRecentBackgrounds = 6;
+
+    private void RenderClockStyles()
+    {
+        ClockStylePanel.Children.Clear();
+        ClockStylePanel.Children.Add(CreateClockStyleButton("halo", Loc.T("settings.clock.halo")));
+        ClockStylePanel.Children.Add(CreateClockStyleButton("orbit", Loc.T("settings.clock.orbit")));
+    }
+
+    private Wpf.Ui.Controls.Button CreateClockStyleButton(string style, string label)
+    {
+        var selected = string.Equals(_settings.FocusClockStyle, style, StringComparison.OrdinalIgnoreCase);
+        var accent = (Brush)FindResource("AccentFillColorDefaultBrush");
+        var track = (Brush)FindResource("ControlStrokeColorDefaultBrush");
+        var text = (Brush)FindResource("TextFillColorPrimaryBrush");
+
+        var content = new StackPanel { HorizontalAlignment = HorizontalAlignment.Center };
+        content.Children.Add(RingVisual.BuildFocusTimer(108, 0.68, track, accent, "18:42", text, style));
+        content.Children.Add(new TextBlock
+        {
+            Text = label,
+            FontWeight = FontWeights.SemiBold,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            Margin = new Thickness(0, 7, 0, 0),
+            Foreground = text,
+        });
+
+        var button = new Wpf.Ui.Controls.Button
+        {
+            Tag = style,
+            Content = content,
+            Width = 190,
+            Height = 154,
+            Padding = new Thickness(12, 8, 12, 8),
+            Margin = new Thickness(0, 0, 10, 8),
+            Appearance = Wpf.Ui.Controls.ControlAppearance.Secondary,
+            BorderBrush = selected ? accent : track,
+            BorderThickness = selected ? new Thickness(2) : new Thickness(1),
+            ToolTip = label,
+        };
+        button.Click += ClockStyleButton_Click;
+        return button;
+    }
+
+    private void ClockStyleButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement { Tag: string style }) return;
+        _settings.FocusClockStyle = style;
+        Settings.Save(_settings);
+        RenderClockStyles();
+    }
 
     private void RenderBackgroundStatus()
     {
