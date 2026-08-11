@@ -271,7 +271,10 @@ public partial class BlocklistPage : UserControl
     {
         var value = NewItemBox.Text.Trim();
         if (value.Length == 0) return;
-        var target = IsAddingApplication ? _data.Apps : _data.Sites;
+
+        var isWebsite = !IsAddingApplication || Blocklist.TryNormalizeWebsiteInput(value, out _);
+        var target = isWebsite ? _data.Sites : _data.Apps;
+        if (isWebsite) value = Blocklist.NormalizeSiteInput(value);
         if (target.Contains(value, StringComparer.OrdinalIgnoreCase)) return;
         target.Add(value);
         Blocklist.Save(_data);

@@ -55,7 +55,7 @@ public class PeriodsTests
     [Fact]
     public void OneOffPeriod_ActiveOnlyToday_WithinWindow_NoMidnightCrossing()
     {
-        var now = DateTime.Now;
+        var now = new DateTime(2026, 8, 11, 12, 0, 0);
         var start = now.AddMinutes(-10);
         var end = now.AddMinutes(10);
         var p = MakePeriod(true, false, date: TodayKey(now), startTime: Hhmm(start), endTime: Hhmm(end));

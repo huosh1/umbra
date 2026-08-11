@@ -39,7 +39,10 @@ public static class SavedBlocklists
         try
         {
             var json = File.ReadAllText(Config.SavedBlocklistsFile);
-            return JsonSerializer.Deserialize<List<SavedBlocklist>>(json, Json.Options) ?? new List<SavedBlocklist>();
+            var lists = JsonSerializer.Deserialize<List<SavedBlocklist>>(json, Json.Options) ?? new List<SavedBlocklist>();
+            if (Normalize(lists))
+                File.WriteAllText(Config.SavedBlocklistsFile, JsonSerializer.Serialize(lists, Json.Options));
+            return lists;
         }
         catch
         {
@@ -49,6 +52,29 @@ public static class SavedBlocklists
 
     public static void Save(List<SavedBlocklist> lists)
     {
+        Normalize(lists);
         File.WriteAllText(Config.SavedBlocklistsFile, JsonSerializer.Serialize(lists, Json.Options));
+    }
+
+    private static bool Normalize(List<SavedBlocklist> lists)
+    {
+        var changed = false;
+        foreach (var list in lists)
+        {
+            var originalApps = list.Apps?.ToList();
+            var originalSites = list.Sites?.ToList();
+            var normalized = Blocklist.Normalize(new BlocklistData
+            {
+                Apps = list.Apps ?? new List<string>(),
+                Sites = list.Sites ?? new List<string>(),
+            });
+            list.Apps = normalized.Apps;
+            list.Sites = normalized.Sites;
+            changed |= originalApps is null
+                || originalSites is null
+                || !originalApps.SequenceEqual(list.Apps, StringComparer.Ordinal)
+                || !originalSites.SequenceEqual(list.Sites, StringComparer.Ordinal);
+        }
+        return changed;
     }
 }

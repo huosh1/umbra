@@ -2,8 +2,8 @@
 #ifndef AppVersion
   #define AppVersion "1.0.0"
 #endif
-#define MyAppPublisher "huosh1"
-#define MyAppUrl "https://github.com/huosh1/umbra"
+#define MyAppPublisher "zixload"
+#define MyAppUrl "https://github.com/zixload/umbra"
 #define MyAppExeName "Umbra.exe"
 #define NativeHostName "com.umbra.browser_blocker"
 #define StoreExtensionId "kihnnccjkhgjagaoljepcpghmfdpicoc"
