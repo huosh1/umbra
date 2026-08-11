@@ -53,7 +53,7 @@ internal sealed class GitHubAsset
 
 public static class Updater
 {
-    private const string Repo = "huosh1/umbra";
+    private const string Repo = "zixload/umbra";
     private const string ChecksumsAssetName = "SHA256SUMS.txt";
     private static readonly string ApiUrl = $"https://api.github.com/repos/{Repo}/releases/latest";
     private static readonly Regex VersionPattern = new(@"\d+(?:\.\d+){1,3}", RegexOptions.Compiled);

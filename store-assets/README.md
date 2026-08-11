@@ -20,10 +20,10 @@ for irregular icons.
 
 - Official URL: select **None** until a domain is verified in Google Search
   Console.
-- Homepage URL: `https://github.com/huosh1/umbra`
-- Support URL: `https://github.com/huosh1/umbra/issues`
+- Homepage URL: `https://github.com/zixload/umbra`
+- Support URL: `https://github.com/zixload/umbra/issues`
 - Privacy policy URL:
-  `https://github.com/huosh1/umbra/blob/main/PRIVACY.md`
+  `https://github.com/zixload/umbra/blob/main/PRIVACY.md`
 - Adult content: **No**
 - Item support: enable it and use the support URL above.
 

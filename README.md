@@ -10,16 +10,16 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/huosh1/umbra/releases/latest"><img src="https://img.shields.io/github/v/release/huosh1/umbra?style=flat-square&label=release&color=0A84FF" alt="Latest Umbra release"></a>
-  <a href="https://github.com/huosh1/umbra/actions/workflows/ci.yml"><img src="https://github.com/huosh1/umbra/actions/workflows/ci.yml/badge.svg" alt="Build status"></a>
+  <a href="https://github.com/zixload/umbra/releases/latest"><img src="https://img.shields.io/github/v/release/zixload/umbra?style=flat-square&label=release&color=0A84FF" alt="Latest Umbra release"></a>
+  <a href="https://github.com/zixload/umbra/actions/workflows/ci.yml"><img src="https://github.com/zixload/umbra/actions/workflows/ci.yml/badge.svg" alt="Build status"></a>
   <img src="https://img.shields.io/badge/Windows_10_%7C_11-x64-30363D?style=flat-square&logo=windows11&logoColor=white" alt="Windows 10 and 11 x64">
   <img src="https://img.shields.io/badge/data-local_only-30363D?style=flat-square&logo=shield&logoColor=white" alt="Local-only data">
 </p>
 
 <p align="center">
-  <a href="https://github.com/huosh1/umbra/releases/latest"><strong>Download Umbra for Windows</strong></a>
+  <a href="https://github.com/zixload/umbra/releases/latest"><strong>Download Umbra for Windows</strong></a>
   &middot;
-  <a href="https://github.com/huosh1/umbra/issues">Support</a>
+  <a href="https://github.com/zixload/umbra/issues">Support</a>
   &middot;
   <a href="PRIVACY.md">Privacy</a>
 </p>
@@ -54,7 +54,7 @@ a detachable timer and meaningful statistics into one customizable desktop app.
 
 ### Windows installer
 
-1. Open the **[latest GitHub release](https://github.com/huosh1/umbra/releases/latest)**.
+1. Open the **[latest GitHub release](https://github.com/zixload/umbra/releases/latest)**.
 2. Under **Assets**, download `Umbra-Setup-<version>-x64.exe`.
 3. Run the installer.
 4. Launch Umbra from the Start menu.
@@ -164,7 +164,7 @@ manual method below.
 ### Manual extension installation
 
 1. Download `Umbra-Extension-<version>.zip` from the
-   [latest release](https://github.com/huosh1/umbra/releases/latest).
+   [latest release](https://github.com/zixload/umbra/releases/latest).
 2. Extract it to a permanent folder. Do not delete that folder afterward.
 3. Open your browser's extension page:
    - Chrome: `chrome://extensions`
@@ -221,7 +221,7 @@ credentials. Full details are in the [privacy policy](PRIVACY.md).
 ### Windows shows "Unknown publisher"
 
 The installer is not code-signed yet. Confirm that it came from
-`github.com/huosh1/umbra/releases`, verify its SHA-256 checksum, then use
+`github.com/zixload/umbra/releases`, verify its SHA-256 checksum, then use
 **More info > Run anyway** only if the values match.
 
 ### A website is not blocked
@@ -249,7 +249,7 @@ Use **Settings > Privacy > Clear history** for focus history. For a complete
 local reset, quit Umbra and remove `%APPDATA%\UmbraNative\data`.
 
 For unresolved problems, open a
-[GitHub issue](https://github.com/huosh1/umbra/issues) with the Umbra version,
+[GitHub issue](https://github.com/zixload/umbra/issues) with the Umbra version,
 Windows version, browser and reproduction steps. Do not include private
 browsing or account data.
 
@@ -265,7 +265,7 @@ browsing or account data.
 ### Clone, build and test
 
 ```powershell
-git clone https://github.com/huosh1/umbra.git
+git clone https://github.com/zixload/umbra.git
 cd umbra
 dotnet restore Umbra.slnx
 dotnet build Umbra.slnx -c Release

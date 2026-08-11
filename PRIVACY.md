@@ -45,4 +45,4 @@ unexpectedly erasing user history.
 ## Contact
 
 Privacy questions can be submitted through the repository's
-[issue tracker](https://github.com/huosh1/umbra/issues).
+[issue tracker](https://github.com/zixload/umbra/issues).

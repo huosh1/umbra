@@ -28,9 +28,9 @@ public class UpdaterTests
     }
 
     [Theory]
-    [InlineData("https://github.com/huosh1/umbra/releases/download/v1.0.3/Umbra.exe", true)]
+    [InlineData("https://github.com/zixload/umbra/releases/download/v1.0.3/Umbra.exe", true)]
     [InlineData("https://release-assets.githubusercontent.com/file", true)]
-    [InlineData("http://github.com/huosh1/umbra/file", false)]
+    [InlineData("http://github.com/zixload/umbra/file", false)]
     [InlineData("https://github.com.example.test/file", false)]
     [InlineData("https://example.test/file", false)]
     public void IsTrustedGitHubUrl_AllowsOnlyHttpsGitHubHosts(string url, bool expected)
