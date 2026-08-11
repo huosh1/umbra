@@ -38,7 +38,8 @@
                 <WrapPanel x:Name="ClockStylePanel" MinWidth="400" />
             </ui:CardExpander>
 
-            <ui:CardExpander Margin="0,0,0,6">
+            <ui:CardExpander x:Name="FloatingFocusExpander" Margin="0,0,0,6"
+                             Expanded="FloatingFocusExpander_Expanded">
                 <ui:CardExpander.Icon><ui:SymbolIcon Symbol="WindowNew24" /></ui:CardExpander.Icon>
                 <ui:CardExpander.Header>
                     <StackPanel>
@@ -170,7 +171,8 @@
                 </ComboBox>
             </ui:CardControl>
 
-            <ui:CardExpander x:Name="BackgroundExpander" Margin="0,0,0,6">
+            <ui:CardExpander x:Name="BackgroundExpander" Margin="0,0,0,6"
+                             Expanded="BackgroundExpander_Expanded">
                 <ui:CardExpander.Icon>
                     <ui:SymbolIcon Symbol="Color24" />
                 </ui:CardExpander.Icon>
