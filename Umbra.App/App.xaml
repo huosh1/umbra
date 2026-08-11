@@ -1,0 +1,59 @@
+<Application x:Class="Umbra.App.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:Umbra.App"
+             xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+             ShutdownMode="OnExplicitShutdown">
+    <Application.Resources>
+        <ResourceDictionary>
+            <!-- WPF-UI (Fluent 2 / WinUI3 réel, pas une réimplémentation
+                 maison) : ThemesDictionary+ControlsDictionary restylent
+                 automatiquement TOUS les contrôles WPF standard (Button,
+                 TextBox, CheckBox, ComboBox...) avec les vraies dimensions,
+                 animations (reveal/press) et couleurs Fluent2 - remplace la
+                 première passe de styles faits main qui n'avait ni les bonnes
+                 proportions ni les animations. -->
+            <ResourceDictionary.MergedDictionaries>
+                <ui:ThemesDictionary Theme="Dark" />
+                <ui:ControlsDictionary />
+            </ResourceDictionary.MergedDictionaries>
+
+            <SolidColorBrush x:Key="DangerBrush" Color="#E0796A" />
+
+            <!-- Couleurs relevées au pixel près sur la vraie appli Ambie
+                 (jenius-apps/ambie, installée via winget, capturée par
+                 PrintWindow puis Bitmap.GetPixel - pas une estimation) :
+                 fond de contenu #121212, panneau de nav #1F1F25 (légèrement
+                 teinté bleu, pas un gris neutre), barre de titre #212121.
+                 WPF-UI peint les deux zones avec la même teinte par défaut. -->
+            <SolidColorBrush x:Key="ApplicationBackgroundBrush" Color="#1F1F25" />
+            <SolidColorBrush x:Key="NavigationPaneSolidBackground" Color="#1F1F25" />
+            <SolidColorBrush x:Key="NavigationViewContentBackground" Color="#121212" />
+
+            <!-- Correctif : un TextBlock "nu" (sans passer par un contrôle
+                 WPF-UI comme Button/CardControl, qui fixent leur Foreground
+                 eux-mêmes) hérite en théorie du Foreground ambiant - mais le
+                 contenu de chaque page est injecté dans le Frame interne de
+                 NavigationView via ReplaceContent(...), qui casse cette
+                 chaîne d'héritage pour certains sous-arbres. Résultat : texte
+                 noir (valeur par défaut absolue de TextBlock) sur fond sombre
+                 pour tous les libellés de section ("Applications", "Plages
+                 existantes"...). Un style global explicite règle ça une fois
+                 pour toutes, sans dépendre de l'héritage. -->
+            <Style TargetType="{x:Type TextBlock}">
+                <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+            </Style>
+
+            <!-- Un clic n'importe où sur la piste place directement le curseur
+                 sous la souris, au lieu du déplacement par page de WPF. -->
+            <Style TargetType="{x:Type Slider}" BasedOn="{StaticResource {x:Type Slider}}">
+                <Setter Property="IsMoveToPointEnabled" Value="True" />
+            </Style>
+
+            <!-- L'arrondi des cards plus prononcé est demandé uniquement pour
+                 Focus/Statistiques/Blocages - posé localement dans
+                 UserControl.Resources de ces 3 pages (pas ici) pour ne
+                 surtout pas affecter Réglages, qui doit rester inchangé. -->
+        </ResourceDictionary>
+    </Application.Resources>
+</Application>

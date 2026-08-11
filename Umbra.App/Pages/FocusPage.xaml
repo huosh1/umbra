@@ -1,0 +1,82 @@
+<UserControl x:Class="Umbra.App.Pages.FocusPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+             xmlns:pages="clr-namespace:Umbra.App.Pages">
+    <UserControl.Resources>
+        <CornerRadius x:Key="ControlCornerRadius">10</CornerRadius>
+        <CornerRadius x:Key="OverlayCornerRadius">10</CornerRadius>
+        <Style TargetType="{x:Type ui:CardControl}" BasedOn="{StaticResource {x:Type ui:CardControl}}"><Setter Property="CornerRadius" Value="10"/></Style>
+        <Style TargetType="{x:Type ui:CardExpander}" BasedOn="{StaticResource {x:Type ui:CardExpander}}"><Setter Property="CornerRadius" Value="10"/></Style>
+        <Style x:Key="BareIconButton" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/><Setter Property="BorderThickness" Value="0"/><Setter Property="Padding" Value="7"/><Setter Property="Cursor" Value="Hand"/><Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}"/>
+            <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Button"><Border Background="Transparent" Padding="{TemplateBinding Padding}"><ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/></Border></ControlTemplate></Setter.Value></Setter>
+            <Style.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter Property="Opacity" Value="0.65"/></Trigger></Style.Triggers>
+        </Style>
+    </UserControl.Resources>
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel MaxWidth="820">
+            <Grid Margin="0,0,0,8">
+                <Border Background="{DynamicResource ControlFillColorDefaultBrush}" BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="10"/>
+                <Button x:Name="PopoutButton" Style="{StaticResource BareIconButton}" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="10" Panel.ZIndex="99" Click="PopoutButton_Click"><ui:SymbolIcon Symbol="WindowNew24" FontSize="18"/></Button>
+
+                <StackPanel x:Name="ActivePanel" Margin="24,18,24,24" Panel.ZIndex="1">
+                    <TextBlock x:Name="SessionStatusText" FontSize="14" Opacity="0.7" HorizontalAlignment="Center"/>
+                    <Grid x:Name="ActiveRingHost" Height="270" HorizontalAlignment="Center"/>
+                    <TextBlock x:Name="SessionTimeText" Visibility="Collapsed"/>
+                    <ui:Button x:Name="StopButton" Appearance="Primary" Width="320" HorizontalAlignment="Center" Click="StopButton_Click"/>
+                </StackPanel>
+
+                <Grid x:Name="ConfigPanel" Margin="24,48,24,24">
+                    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="286"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                    <Grid Grid.Row="0" Margin="0,0,0,12">
+                        <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="12"/><ColumnDefinition/></Grid.ColumnDefinitions>
+                        <ui:TextBox x:Name="QuestNameBox" Grid.Column="0"/>
+                        <ComboBox x:Name="BlocklistCombo" Grid.Column="2" HorizontalAlignment="Stretch"/>
+                    </Grid>
+                    <TextBlock x:Name="BlocklistLabel" Visibility="Collapsed"/>
+
+                    <TabControl Grid.Row="1" x:Name="FocusModeTabs" Margin="0,0,0,14" SelectionChanged="FocusModeTabs_SelectionChanged">
+                        <TabItem x:Name="PomodoroTab">
+                            <Grid Margin="12,16,12,8">
+                                <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="30"/><ColumnDefinition Width="190"/></Grid.ColumnDefinitions>
+                                <StackPanel>
+                                    <Grid><TextBlock x:Name="FocusSliderLabel" Opacity="0.7"/><TextBlock x:Name="FocusSliderValue" HorizontalAlignment="Right" FontWeight="SemiBold"/></Grid>
+                                    <Slider x:Name="FocusSlider" Minimum="5" Maximum="120" Margin="0,3,0,14" ValueChanged="Slider_ValueChanged"/>
+                                    <Grid><TextBlock x:Name="RestSliderLabel" Opacity="0.7"/><TextBlock x:Name="RestSliderValue" HorizontalAlignment="Right" FontWeight="SemiBold"/></Grid>
+                                    <Slider x:Name="RestSlider" Minimum="1" Maximum="60" Margin="0,3,0,14" ValueChanged="Slider_ValueChanged"/>
+                                    <Grid><TextBlock x:Name="RepeatsSliderLabel" Opacity="0.7"/><TextBlock x:Name="RepeatsSliderValue" HorizontalAlignment="Right" FontWeight="SemiBold"/></Grid>
+                                    <Slider x:Name="RepeatsSlider" Minimum="1" Maximum="10" Margin="0,3,0,0" ValueChanged="Slider_ValueChanged"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="2" VerticalAlignment="Center">
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,16"><ui:SymbolIcon Symbol="Clock24" Margin="0,0,9,0"/><StackPanel><TextBlock x:Name="EndStatLabel" FontSize="11" Opacity="0.6"/><TextBlock x:Name="EndStatValue" FontWeight="SemiBold"/></StackPanel></StackPanel>
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,16"><ui:SymbolIcon Symbol="Timer24" Margin="0,0,9,0"/><StackPanel><TextBlock x:Name="DurationStatLabel" FontSize="11" Opacity="0.6"/><TextBlock x:Name="DurationStatValue" FontWeight="SemiBold"/></StackPanel></StackPanel>
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,16"><ui:SymbolIcon Symbol="Target24" Margin="0,0,9,0"/><StackPanel><TextBlock x:Name="FocusStatLabel" FontSize="11" Opacity="0.6"/><TextBlock x:Name="FocusStatValue" FontWeight="SemiBold"/></StackPanel></StackPanel>
+                                    <StackPanel Orientation="Horizontal"><ui:SymbolIcon Symbol="WeatherMoon24" Margin="0,0,9,0"/><StackPanel><TextBlock x:Name="RestStatLabel" FontSize="11" Opacity="0.6"/><TextBlock x:Name="RestStatValue" FontWeight="SemiBold"/></StackPanel></StackPanel>
+                                </StackPanel>
+                            </Grid>
+                        </TabItem>
+
+                        <TabItem x:Name="FreeTab">
+                            <StackPanel Margin="12,18,12,12">
+                                <Grid><TextBlock x:Name="FreeDurationLabel" Opacity="0.7"/><TextBlock x:Name="FreeDurationValue" HorizontalAlignment="Right" FontWeight="SemiBold"/></Grid>
+                                <Slider x:Name="FreeDurationSlider" Minimum="5" Maximum="240" Margin="0,4,0,18" ValueChanged="FreeDurationSlider_ValueChanged"/>
+                            </StackPanel>
+                        </TabItem>
+
+                        <TabItem x:Name="SchedulesTab"><ScrollViewer VerticalScrollBarVisibility="Auto"><pages:PeriodsPage Margin="10,14,10,10"/></ScrollViewer></TabItem>
+                    </TabControl>
+
+                    <DockPanel Grid.Row="2" x:Name="HardModePanel" Margin="0,0,0,14" LastChildFill="False">
+                        <StackPanel Orientation="Horizontal" DockPanel.Dock="Left"><ui:SymbolIcon Symbol="LockClosed24" Margin="0,0,8,0"/><TextBlock x:Name="HardModeLabel" VerticalAlignment="Center"/></StackPanel>
+                        <ui:ToggleSwitch x:Name="HardModeToggle" DockPanel.Dock="Right"/>
+                    </DockPanel>
+                    <ui:Button Grid.Row="3" x:Name="StartButton" Appearance="Primary" Height="46" HorizontalAlignment="Stretch" Click="StartButton_Click"/>
+                    <TextBlock Grid.Row="4" x:Name="WatchdogStatusText" FontSize="12" Opacity="0.6" HorizontalAlignment="Center" Margin="0,12,0,0"/>
+                </Grid>
+            </Grid>
+
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

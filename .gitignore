@@ -1,0 +1,23 @@
+bin/
+obj/
+.vs/
+.idea/
+.validation/
+artifacts/
+TestResults/
+*.user
+*.suo
+*.pdb
+
+# Local migration archives and developer-only tools.
+Umbra.App.winui3.bak/
+Umbra.Launcher.retired.bak/
+tools/
+
+# Retired offline Korean vocabulary/TTS assets are kept locally only.
+Umbra.App/piper/
+Umbra.App/vocab-defaults/
+
+# Third-party animated wallpapers are not redistributed. Users can select
+# their own MP4 files from Settings after installing Umbra.
+Umbra.App/Assets/FloatingBackgrounds/*.mp4

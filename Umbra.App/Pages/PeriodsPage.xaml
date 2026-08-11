@@ -1,0 +1,47 @@
+<UserControl x:Class="Umbra.App.Pages.PeriodsPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml">
+    <UserControl.Resources>
+        <!-- Défini aussi ici (pas seulement dans FocusPage.xaml qui héberge
+             cette page) : StaticResource se résout au moment du chargement
+             du XAML de CE fichier, pas via l'arbre visuel d'exécution -
+             contrairement aux clés DynamicResource internes de WPF-UI
+             (CornerRadius etc.) qui, elles, traversent bien la frontière
+             parent/enfant à l'affichage. Sans ça : XamlParseException au
+             lancement ("Cannot find resource named 'SectionHeaderStyle'"). -->
+        <Style x:Key="SectionHeaderStyle" TargetType="TextBlock">
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="Foreground" Value="#40BDFF" />
+        </Style>
+    </UserControl.Resources>
+    <Grid MaxWidth="1100">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <ui:CardExpander x:Name="NewPeriodExpander" Grid.Row="0" IsExpanded="True" Margin="0,0,0,8">
+            <StackPanel MinWidth="500">
+                <ui:TextBox x:Name="NameBox" Margin="0,0,0,8" />
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                    <TextBlock x:Name="StartLabel" Opacity="0.6" VerticalAlignment="Center" Width="50" />
+                    <ui:TextBox x:Name="StartBox" Width="80" Text="22:00" />
+                    <TextBlock x:Name="EndLabel" Opacity="0.6" VerticalAlignment="Center" Width="50" Margin="16,0,0,0" />
+                    <ui:TextBox x:Name="EndBox" Width="80" Text="07:00" />
+                </StackPanel>
+                <TextBlock x:Name="DaysLabel" FontSize="12" Opacity="0.6" Margin="0,0,0,8" />
+                <StackPanel x:Name="DaysPanel" Orientation="Horizontal" Margin="0,0,0,10" />
+                <TextBlock x:Name="BlocklistLabel" FontSize="12" Opacity="0.6" Margin="0,0,0,8" />
+                <ComboBox x:Name="BlocklistCombo" HorizontalAlignment="Left" MinWidth="200" Margin="0,0,0,10" />
+                <ui:Button x:Name="AddPeriodButton" Appearance="Primary" HorizontalAlignment="Left" Click="AddPeriod_Click" />
+            </StackPanel>
+        </ui:CardExpander>
+
+        <StackPanel Grid.Row="1">
+            <ScrollViewer MaxHeight="300" VerticalScrollBarVisibility="Auto">
+                <ItemsControl x:Name="PeriodsList" />
+            </ScrollViewer>
+        </StackPanel>
+    </Grid>
+</UserControl>

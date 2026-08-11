@@ -1,0 +1,55 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <RootNamespace>Umbra.App</RootNamespace>
+    <AssemblyName>Umbra</AssemblyName>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>icon.ico</ApplicationIcon>
+    <Version>1.0.0</Version>
+    <Product>Umbra</Product>
+    <Company>Umbra</Company>
+    <Description>Focus sessions, distraction blocking and ambient sounds for Windows.</Description>
+    <SatelliteResourceLanguages>en;fr</SatelliteResourceLanguages>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Umbra.Core\Umbra.Core.csproj" />
+    <ProjectReference Include="..\Umbra.BrowserHost\Umbra.BrowserHost.csproj" ReferenceOutputAssembly="false" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="browser-extension\**\*" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Assets\Ambient\**\*" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Assets\Backgrounds\**\*" CopyToOutputDirectory="PreserveNewest" />
+    <!-- Only redistributable static presets ship with public builds. Users
+         can still select their own PNG/JPG/MP4 files from Settings. -->
+    <Content Include="Assets\FloatingBackgrounds\*.png" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <Target Name="CopyBrowserHost" AfterTargets="Build" Condition="'$(SkipBrowserHostCopy)' != 'true'">
+    <ItemGroup>
+      <BrowserHostFiles Include="..\Umbra.BrowserHost\bin\$(Configuration)\net10.0-windows10.0.19041.0\**\*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(BrowserHostFiles)" DestinationFiles="@(BrowserHostFiles->'$(OutDir)browser-host\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
+  </Target>
+
+  <ItemGroup>
+    <Resource Include="icon.ico" />
+  </ItemGroup>
+
+  <!-- vocab-defaults\ et piper\ ne sont plus copiés dans la sortie de build :
+       l'onglet Vocabulaire et le défi du matin ont été retirés de
+       l'app (pas de fonctionnalité coréen pour l'instant). Dossiers sources
+       laissés tels quels sur le disque au cas où. -->
+
+  <ItemGroup>
+    <PackageReference Include="WPF-UI" Version="4.3.0" />
+  </ItemGroup>
+
+</Project>

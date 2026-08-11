@@ -1,0 +1,87 @@
+<UserControl x:Class="Umbra.App.Pages.BlocklistPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml">
+    <UserControl.Resources>
+        <!-- Arrondi de cards plus prononcé, demandé pour cet onglet
+             uniquement - posé ici (pas dans App.xaml) pour ne pas affecter
+             Réglages. BasedOn est indispensable : un Style implicite sans
+             BasedOn remplace tout le template par défaut de WPF-UI (bug vécu :
+             CardControl perdait l'affichage de son Header). CardAction n'a
+             pas de CornerRadius stylable, il suit ControlCornerRadius. -->
+        <CornerRadius x:Key="ControlCornerRadius">8</CornerRadius>
+        <CornerRadius x:Key="OverlayCornerRadius">8</CornerRadius>
+        <Style TargetType="{x:Type ui:CardControl}" BasedOn="{StaticResource {x:Type ui:CardControl}}">
+            <Setter Property="CornerRadius" Value="8" />
+        </Style>
+        <Style TargetType="{x:Type ui:CardExpander}" BasedOn="{StaticResource {x:Type ui:CardExpander}}">
+            <Setter Property="CornerRadius" Value="8" />
+        </Style>
+
+        <!-- Petits titres de section en gras + bleu accent, comme sur Focus/
+             Statistiques. -->
+        <Style x:Key="SectionHeaderStyle" TargetType="TextBlock">
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+        </Style>
+    </UserControl.Resources>
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel MaxWidth="920" Margin="8,4,8,8">
+            <TextBlock x:Name="PresetsLabel" Style="{StaticResource SectionHeaderStyle}" Margin="0,0,0,8" />
+            <WrapPanel x:Name="PresetsPanel" Margin="0,0,0,4" />
+            <TextBlock x:Name="PresetFeedbackText" Visibility="Collapsed" Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}" FontSize="12" Margin="2,0,0,12" />
+
+            <TextBlock x:Name="BlocklistCoreLabel" Style="{StaticResource SectionHeaderStyle}" Margin="0,0,0,8" />
+
+            <ui:CardExpander Margin="0,0,0,8">
+                <ui:CardExpander.Icon>
+                    <ui:SymbolIcon Symbol="Folder24" />
+                </ui:CardExpander.Icon>
+                <ui:CardExpander.Header>
+                    <TextBlock x:Name="SavedLabel" FontWeight="Normal" />
+                </ui:CardExpander.Header>
+                <StackPanel MinWidth="500">
+                    <ItemsControl x:Name="SavedList" Margin="0,0,0,8" />
+                    <DockPanel>
+                        <ui:Button x:Name="SaveListButton" DockPanel.Dock="Right" Appearance="Secondary" Margin="8,0,0,0" Click="SaveList_Click">
+                            <ui:SymbolIcon Symbol="Add24" />
+                        </ui:Button>
+                        <ui:TextBox x:Name="NewListNameBox" HorizontalAlignment="Stretch" />
+                    </DockPanel>
+                </StackPanel>
+            </ui:CardExpander>
+
+            <ui:CardExpander x:Name="ItemsExpander" Margin="0,0,0,8">
+                <ui:CardExpander.Icon>
+                    <ui:SymbolIcon Symbol="Shield24" />
+                </ui:CardExpander.Icon>
+                <ui:CardExpander.Header>
+                    <TextBlock x:Name="ItemsLabel" FontWeight="Normal" />
+                </ui:CardExpander.Header>
+                <StackPanel MinWidth="500">
+                    <DockPanel Margin="0,0,0,8">
+                        <ui:Button x:Name="PickRunningAppButton" DockPanel.Dock="Right" Appearance="Secondary" Margin="8,0,0,0" Click="PickRunningApp_Click">
+                            <ui:SymbolIcon Symbol="AppsListDetail24" />
+                        </ui:Button>
+                        <ui:Button x:Name="AddItemButton" DockPanel.Dock="Right" Appearance="Secondary" Margin="8,0,0,0" Click="AddItem_Click">
+                            <ui:SymbolIcon Symbol="Add24" />
+                        </ui:Button>
+                        <ComboBox x:Name="ItemTypeBox" DockPanel.Dock="Left" Width="150" Margin="0,0,8,0" SelectionChanged="ItemTypeBox_SelectionChanged">
+                            <ComboBoxItem x:Name="ApplicationTypeItem" Tag="app" />
+                            <ComboBoxItem x:Name="WebsiteTypeItem" Tag="site" />
+                        </ComboBox>
+                        <ui:TextBox x:Name="NewItemBox" HorizontalAlignment="Stretch" KeyDown="NewItemBox_KeyDown" />
+                    </DockPanel>
+                    <ui:TextBox x:Name="BlockedSearchBox" Visibility="Collapsed" Margin="0,0,0,8" TextChanged="BlockedSearchBox_TextChanged">
+                        <ui:TextBox.Icon>
+                            <ui:SymbolIcon Symbol="Search24" />
+                        </ui:TextBox.Icon>
+                    </ui:TextBox>
+                    <ScrollViewer MaxHeight="300" VerticalScrollBarVisibility="Auto">
+                        <ItemsControl x:Name="BlockedItemsList" />
+                    </ScrollViewer>
+                </StackPanel>
+            </ui:CardExpander>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

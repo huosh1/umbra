@@ -1,0 +1,114 @@
+using System.Text.Json;
+
+namespace Umbra.Core;
+
+public class Period
+{
+    public string Id { get; set; } = "";
+    public string Name { get; set; } = "";
+    public bool Enabled { get; set; }
+    public bool Recurring { get; set; } = true;
+    public List<int> Days { get; set; } = new();
+    public string? Date { get; set; } // null = pas encore normalisé (voir Periods.Load)
+    public string? PausedDate { get; set; }
+    public string StartTime { get; set; } = "00:00";
+    public string EndTime { get; set; } = "00:00";
+    public List<string> Apps { get; set; } = new();
+    public List<string> Sites { get; set; } = new();
+}
+
+public class PeriodsData
+{
+    public List<Period> Periods { get; set; } = new();
+}
+
+public static class Periods
+{
+    public static string TodayKey(DateTime now) => now.ToString("yyyy-MM-dd");
+
+    // Une plage ponctuelle ("aujourd'hui seulement") n'a plus de raison
+    // d'être gardée une fois sa date passée - on la retire au chargement
+    // pour ne pas laisser periods.json grossir indéfiniment ni fausser
+    // HasEnabledPeriod().
+    public static PeriodsData Load()
+    {
+        if (!File.Exists(Config.PeriodsFile)) return new PeriodsData();
+        try
+        {
+            var json = File.ReadAllText(Config.PeriodsFile);
+            var data = JsonSerializer.Deserialize<PeriodsData>(json, Json.Options) ?? new PeriodsData();
+            var today = TodayKey(DateTime.Now);
+            foreach (var p in data.Periods)
+            {
+                p.Date ??= today;
+            }
+            data.Periods = data.Periods.Where(p => p.Recurring || string.CompareOrdinal(p.Date, today) >= 0).ToList();
+            return data;
+        }
+        catch
+        {
+            return new PeriodsData();
+        }
+    }
+
+    public static void Save(PeriodsData data)
+    {
+        File.WriteAllText(Config.PeriodsFile, JsonSerializer.Serialize(data, Json.Options));
+    }
+
+    private static int TimeToMinutes(string? hhmm)
+    {
+        var parts = (hhmm ?? "00:00").Split(':');
+        var h = parts.Length > 0 && int.TryParse(parts[0], out var hv) ? hv : 0;
+        var m = parts.Length > 1 && int.TryParse(parts[1], out var mv) ? mv : 0;
+        return h * 60 + m;
+    }
+
+    public static bool PeriodCoversNow(Period p, DateTime now)
+    {
+        if (!p.Enabled) return false;
+        // Coupure d'urgence pour aujourd'hui seulement (voir "Désactiver
+        // aujourd'hui" côté UI) : ne touche pas à la config (jours/horaires),
+        // donc une plage récurrente reprend normalement le jour suivant sans
+        // rien devoir réactiver à la main.
+        if (p.PausedDate == TodayKey(now)) return false;
+
+        var mins = now.Hour * 60 + now.Minute;
+        var start = TimeToMinutes(p.StartTime);
+        var end = TimeToMinutes(p.EndTime);
+        if (start == end) return false;
+
+        if (p.Recurring)
+        {
+            if (!p.Days.Contains((int)now.DayOfWeek)) return false; // DayOfWeek : 0=dimanche..6=samedi, comme Date.getDay() en JS
+            if (start < end) return mins >= start && mins < end;
+            return mins >= start || mins < end; // plage récurrente qui traverse minuit (ex: 22:00 -> 02:00)
+        }
+        // plage ponctuelle : bornée au jour choisi, pas de traversée de minuit
+        if (p.Date != TodayKey(now)) return false;
+        return start < end && mins >= start && mins < end;
+    }
+
+    // Minutes restantes avant la fin d'une plage actuellement active (pour
+    // remonter un temps restant à l'extension navigateur, comme pour une
+    // session classique).
+    public static int MinutesUntilEnd(Period p, DateTime now)
+    {
+        var mins = now.Hour * 60 + now.Minute;
+        var end = TimeToMinutes(p.EndTime);
+        if (end > mins) return end - mins;
+        return 1440 - mins + end; // la fin est passée minuit (plage récurrente uniquement)
+    }
+
+    // true si au moins une plage activée couvre l'instant donné.
+    public static bool IsActiveNow(PeriodsData data, DateTime now) =>
+        data.Periods.Any(p => PeriodCoversNow(p, now));
+
+    // Les plages actuellement actives, pour récupérer leurs listes de
+    // blocage propres (apps/sites par période).
+    public static List<Period> GetActivePeriods(PeriodsData data, DateTime now) =>
+        data.Periods.Where(p => PeriodCoversNow(p, now)).ToList();
+
+    public static bool HasEnabledPeriod(PeriodsData data) =>
+        data.Periods.Any(p => p.Enabled);
+}

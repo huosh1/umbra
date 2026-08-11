@@ -1,0 +1,23 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - name: Restore
+        run: dotnet restore Umbra.slnx
+      - name: Build
+        run: dotnet build Umbra.slnx -c Release --no-restore
+      - name: Test
+        run: dotnet test Umbra.Tests/Umbra.Tests.csproj -c Release --no-build

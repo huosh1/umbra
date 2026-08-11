@@ -1,0 +1,141 @@
+using System.IO;
+using System.Windows;
+using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Media.Effects;
+using System.Windows.Media.Imaging;
+using System.Windows.Controls;
+using System.Windows.Threading;
+using Umbra.Core;
+
+namespace Umbra.App;
+
+public partial class FloatingFocusWindow : Wpf.Ui.Controls.FluentWindow
+{
+    private static FloatingFocusWindow? _instance;
+    private readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromSeconds(1) };
+
+    public static void ShowOrActivate()
+    {
+        if (_instance is { IsLoaded: true }) { _instance.Activate(); return; }
+        _instance = new FloatingFocusWindow();
+        _instance.Show();
+    }
+
+    private FloatingFocusWindow()
+    {
+        InitializeComponent();
+        ApplyBackground();
+        _timer.Tick += async (_, _) => { RefreshSession(); await RefreshSpotify(); };
+        _timer.Start();
+        Closed += (_, _) => { _timer.Stop(); BackgroundVideo.Stop(); _instance = null; };
+        RefreshSession();
+        _ = RefreshSpotify();
+    }
+
+    private void ApplyBackground()
+    {
+        var settings = Settings.Load();
+        var path = settings.FloatingFocusBackgroundPath;
+        if (string.IsNullOrWhiteSpace(path) || !File.Exists(path)) return;
+        var effect = new BlurEffect { Radius = settings.FloatingFocusBlur };
+        if (Path.GetExtension(path).Equals(".mp4", StringComparison.OrdinalIgnoreCase))
+        {
+            BackgroundVideo.Source = new Uri(path, UriKind.Absolute); BackgroundVideo.Effect = effect; BackgroundVideo.Play();
+        }
+        else
+        {
+            BackgroundImage.Source = new BitmapImage(new Uri(path, UriKind.Absolute)); BackgroundImage.Effect = effect;
+        }
+    }
+
+    private void RefreshSession()
+    {
+        if (RingHost is null) return;
+        var s = Session.Load();
+        var seconds = s.Active ? Session.RemainingSeconds(s) : 0d;
+        var total = s.Active ? Math.Max(1, (s.EndTs - s.StartTs) / 1000d) : 1d;
+        var title = Loc.T("focus.status.none");
+        var detail = "";
+
+        if (s.Active && s.Kind == "pomodoro" && s.Pomodoro is { } pomodoro)
+        {
+            var cycle = Math.Min(pomodoro.CycleIndex + 1, pomodoro.CyclesTotal);
+            title = pomodoro.Phase == "break"
+                ? string.Format(Loc.T("floating.pomodoro.break"), cycle, pomodoro.CyclesTotal)
+                : string.Format(Loc.T("floating.pomodoro.focus"), cycle, pomodoro.CyclesTotal);
+            detail = pomodoro.Phase == "break"
+                ? Loc.T("floating.pomodoro.next.focus")
+                : cycle < pomodoro.CyclesTotal ? string.Format(Loc.T("floating.pomodoro.next.break"), pomodoro.BreakMinutes) : Loc.T("floating.pomodoro.last");
+        }
+        else if (s.Active)
+        {
+            title = string.IsNullOrWhiteSpace(s.QuestName) ? Loc.T("floating.free") : s.QuestName;
+            detail = $"{Loc.T("floating.free")} · {string.Format(Loc.T("floating.ends"), DateTimeOffset.FromUnixTimeMilliseconds(s.EndTs).ToLocalTime().ToString("HH:mm"))}";
+        }
+        else
+        {
+            var period = Periods.GetActivePeriods(Periods.Load(), DateTime.Now).FirstOrDefault();
+            if (period is not null)
+            {
+                (seconds, total) = GetScheduleTiming(period, DateTime.Now);
+                title = string.Format(Loc.T("floating.schedule"), period.Name);
+                detail = string.Format(Loc.T("floating.ends"), period.EndTime);
+            }
+        }
+
+        var ringSize = Math.Clamp(Math.Min(ActualWidth - 90, ActualHeight - 160), 155, 285);
+        RingHost.Children.Clear();
+        RingHost.Children.Add(RingVisual.BuildClock(ringSize, seconds > 0 ? seconds / total : 0, new SolidColorBrush(Color.FromArgb(70, 255, 255, 255)), new SolidColorBrush(Color.FromRgb(45, 165, 230)),
+            seconds > 0 ? $"{(int)(seconds / 60):D2}:{(int)(seconds % 60):D2}" : "--:--", "", Brushes.White));
+        PhaseText.Text = title;
+        ModeDetailText.Text = detail;
+    }
+
+    private static (double Remaining, double Total) GetScheduleTiming(Period period, DateTime now)
+    {
+        if (!TimeSpan.TryParse(period.StartTime, out var startTime) || !TimeSpan.TryParse(period.EndTime, out var endTime)) return (0, 1);
+        var start = now.Date + startTime;
+        var end = now.Date + endTime;
+        if (end <= start)
+        {
+            if (now < end) start = start.AddDays(-1); else end = end.AddDays(1);
+        }
+        return (Math.Max(0, (end - now).TotalSeconds), Math.Max(1, (end - start).TotalSeconds));
+    }
+
+    private async Task RefreshSpotify()
+    {
+        var info = await SpotifyControl.GetNowPlayingAsync();
+        SpotifyTitle.Text = string.IsNullOrWhiteSpace(info.Title) ? Loc.T("nowplaying.none") : info.Title;
+        SpotifyArtist.Text = info.Artist ?? "";
+        if (info.Thumbnail is not { Length: > 0 }) { SpotifyThumbnail.Source = null; return; }
+        var image = new BitmapImage();
+        using var stream = new MemoryStream(info.Thumbnail);
+        image.BeginInit(); image.CacheOption = BitmapCacheOption.OnLoad; image.StreamSource = stream; image.EndInit(); image.Freeze();
+        SpotifyThumbnail.Source = image;
+    }
+
+    private void Close_Click(object sender, RoutedEventArgs e) => Close();
+    private void Window_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.LeftButton != MouseButtonState.Pressed || FindParent<Button>(e.OriginalSource as DependencyObject) is not null) return;
+        var point = e.GetPosition(this);
+        if (point.X <= 9 || point.Y <= 9 || point.X >= ActualWidth - 9 || point.Y >= ActualHeight - 9) return;
+        DragMove();
+        e.Handled = true;
+    }
+
+    private static T? FindParent<T>(DependencyObject? element) where T : DependencyObject
+    {
+        while (element is not null)
+        {
+            if (element is T found) return found;
+            element = VisualTreeHelper.GetParent(element);
+        }
+        return null;
+    }
+
+    private void Window_SizeChanged(object sender, SizeChangedEventArgs e) => RefreshSession();
+    private void BackgroundVideo_MediaEnded(object sender, RoutedEventArgs e) { BackgroundVideo.Position = TimeSpan.Zero; BackgroundVideo.Play(); }
+}

@@ -1,0 +1,223 @@
+using Umbra.Core;
+
+namespace Umbra.App;
+
+// Petit système de traduction maison plutôt que .resx/ResourceManager : peu
+// de texte au total (une poignée de pages), et un Dictionary<string,(fr,en)>
+// direct est plus simple à lire/maintenir ici qu'un projet de ressources
+// séparé. LanguageChanged permet aux éléments qui ne sont pas recréés à
+// chaque navigation (barre latérale, NowPlayingBar) de se rafraîchir sans
+// redémarrer l'app.
+public static class Loc
+{
+    public static event Action? LanguageChanged;
+
+    private static string _language = Settings.Load().Language == "en" ? "en" : "fr";
+
+    public static string Language
+    {
+        get => _language;
+        set
+        {
+            var normalized = value == "en" ? "en" : "fr";
+            if (_language == normalized) return;
+            _language = normalized;
+            LanguageChanged?.Invoke();
+        }
+    }
+
+    private static readonly Dictionary<string, (string Fr, string En)> Strings = new()
+    {
+        ["nav.focus"] = ("Focus", "Focus"),
+        ["nav.blocklist"] = ("Blocages", "Blocklist"),
+        ["nav.stats"] = ("Statistiques", "Statistics"),
+        ["nav.sounds"] = ("Sons", "Sounds"),
+        ["nav.settings"] = ("Réglages", "Settings"),
+        ["search.placeholder"] = ("Rechercher", "Search"),
+
+        ["nowplaying.none"] = ("Aucune lecture en cours", "Nothing playing"),
+        ["sounds.title"] = ("Sons", "Sounds"),
+        ["sounds.subtitle"] = ("Mixe jusqu'à 3 ambiances", "Mix up to 3 ambient sounds"),
+        ["sounds.limit"] = ("Tu peux mélanger jusqu'à 3 sons.", "You can mix up to 3 sounds."),
+
+        ["focus.duration"] = ("Durée", "Duration"),
+        ["focus.quest.placeholder"] = ("Nom de la quête (Session de focus)", "Task name (Focus session)"),
+        ["focus.quest.default"] = ("Session de focus", "Focus session"),
+        ["focus.hardmode"] = ("Hard mode", "Hard mode"),
+        ["focus.hardmode.desc"] = ("Impossible d'arrêter avant la fin", "Can't stop before it ends"),
+        ["focus.start"] = ("Démarrer", "Start"),
+        ["focus.stop"] = ("Arrêter", "Stop"),
+        ["focus.locked"] = ("Verrouillé (hard mode)", "Locked (hard mode)"),
+        ["focus.status.none"] = ("Aucune session en cours", "No session running"),
+        ["focus.status.active"] = ("Session en cours", "Session in progress"),
+        ["focus.status.active.hard"] = ("Session en cours (hard mode)", "Session in progress (hard mode)"),
+        ["focus.watchdog.active"] = ("Protection : active", "Protection: active"),
+        ["focus.watchdog.inactive"] = ("Protection : watchdog non détecté", "Protection: watchdog not detected"),
+        ["focus.periods.header"] = ("Plages horaires", "Schedules"),
+        ["focus.blocklist.label"] = ("Liste de blocage", "Block list"),
+        ["focus.blocklist.current"] = ("Liste actuelle", "Current list"),
+        ["focus.slider.focus"] = ("Minutes de focus", "Focus minutes"),
+        ["focus.slider.rest"] = ("Minutes de repos", "Rest minutes"),
+        ["focus.slider.repeats"] = ("Répétitions", "Repeats"),
+        ["focus.mode.pomodoro"] = ("Pomodoro", "Pomodoro"),
+        ["focus.mode.free"] = ("Libre", "Free"),
+        ["focus.mode.schedules"] = ("Plannings", "Schedules"),
+        ["focus.free.duration"] = ("Durée libre", "Free duration"),
+        ["focus.quick"] = ("Démarrage rapide : {0} min", "Quick start: {0} min"),
+        ["focus.stat.end"] = ("Fin", "End"),
+        ["focus.stat.duration"] = ("Durée totale", "Duration"),
+        ["focus.stat.focus"] = ("Focus", "Focus"),
+        ["focus.stat.rest"] = ("Repos", "Rest"),
+
+        ["periods.new"] = ("Nouvelle plage", "New schedule"),
+        ["periods.start"] = ("Début", "Start"),
+        ["periods.end"] = ("Fin", "End"),
+        ["periods.days"] = ("Jours", "Days"),
+        ["periods.add"] = ("Ajouter la plage", "Add schedule"),
+        ["periods.existing"] = ("Plages existantes", "Existing schedules"),
+        ["periods.name.default"] = ("Plage", "Schedule"),
+        ["periods.remove"] = ("Supprimer", "Remove"),
+        ["periods.blocklist.label"] = ("Liste de blocage (optionnel)", "Block list (optional)"),
+        ["periods.blocklist.none"] = ("Aucune", "None"),
+
+        ["blocklist.apps"] = ("Applications", "Applications"),
+        ["blocklist.items"] = ("Éléments bloqués", "Blocked items"),
+        ["blocklist.apps.placeholder"] = ("nom.exe", "name.exe"),
+        ["blocklist.add"] = ("Ajouter", "Add"),
+        ["blocklist.sites"] = ("Sites", "Websites"),
+        ["blocklist.sites.placeholder"] = ("exemple.com", "example.com"),
+        ["blocklist.remove"] = ("Retirer", "Remove"),
+        ["blocklist.presets"] = ("Listes préfaites", "Ready-made lists"),
+        ["blocklist.core"] = ("Votre liste de blocage", "Your blocklist"),
+        ["blocklist.presets.social"] = ("Réseaux sociaux", "Social media"),
+        ["blocklist.presets.streaming"] = ("Streaming", "Streaming"),
+        ["blocklist.presets.games"] = ("Jeux", "Games"),
+        ["blocklist.presets.news"] = ("Actualités", "News"),
+        ["blocklist.presets.shopping"] = ("Shopping", "Shopping"),
+        ["blocklist.presets.messaging"] = ("Messageries", "Messaging"),
+        ["blocklist.presets.add"] = ("Appliquer", "Apply"),
+        ["blocklist.presets.added"] = ("✓ {0} site(s) ajouté(s) à la liste", "✓ {0} site(s) added to the list"),
+        ["blocklist.presets.already"] = ("✓ Cette liste est déjà appliquée", "✓ This list is already applied"),
+        ["blocklist.presets.preview"] = ("Domaines inclus", "Included domains"),
+        ["blocklist.search.placeholder"] = ("Rechercher un élément bloqué", "Search blocked items"),
+        ["blocklist.saved"] = ("Profils enregistrés", "Saved profiles"),
+        ["blocklist.saved.empty"] = ("Aucune liste enregistrée pour l'instant.", "No saved lists yet."),
+        ["blocklist.saved.save"] = ("Créer un profil", "Create profile"),
+        ["blocklist.saved.name.placeholder"] = ("Nom de la liste", "List name"),
+        ["blocklist.saved.load"] = ("Charger", "Load"),
+        ["blocklist.saved.delete"] = ("Supprimer", "Delete"),
+        ["blocklist.pick.running"] = ("Choisir parmi les apps ouvertes", "Pick from running apps"),
+        ["blocklist.pick.title"] = ("Applications en cours d'exécution", "Currently running applications"),
+        ["blocklist.pick.empty"] = ("Aucune fenêtre d'application détectée.", "No application windows detected."),
+        ["blocklist.pick.cancel"] = ("Annuler", "Cancel"),
+
+        ["stats.streak.label"] = ("jours de suite", "day streak"),
+        ["stats.streak.desc"] = ("L'assiduité fait grandir ta série, un jour sauté la remet à zéro.", "Consistency grows your streak — skip a day and it resets."),
+        ["stats.quests"] = ("Quêtes les plus fréquentes (7 derniers jours)", "Most frequent tasks (last 7 days)"),
+        ["stats.today"] = ("Aujourd'hui", "Today"),
+        ["stats.week"] = ("Cette semaine", "This week"),
+        ["stats.month"] = ("Ce mois-ci", "This month"),
+        ["stats.avg"] = ("Moyenne / session", "Average / session"),
+        ["stats.total"] = ("Sessions totales", "Total sessions"),
+        ["stats.alltime"] = ("Temps cumulé", "All-time focus"),
+        ["stats.bestday"] = ("Meilleure journée", "Best day"),
+        ["stats.longest"] = ("Plus longue session", "Longest session"),
+        ["stats.empty"] = ("Aucune session enregistrée pour l'instant.", "No sessions recorded yet."),
+        ["stats.music"] = ("Musiques les plus écoutées", "Top played sounds"),
+        ["stats.music.empty"] = ("Écoute de la musique pour voir tes titres préférés ici.", "Listen to music to see your favorite tracks here."),
+        ["stats.activity"] = ("Calendrier d’activité", "Activity calendar"),
+        ["stats.activity.legend"] = ("Plus la couleur est intense, plus le temps de focus est élevé.", "Stronger color means more focus time."),
+        ["stats.activity.year"] = ("Année entière", "Full year"),
+        ["stats.blocked"] = ("Distractions bloquées", "Blocked distractions"),
+        ["stats.blocked.total"] = ("{0} tentative(s) d’application bloquée(s)", "{0} blocked app attempt(s)"),
+        ["stats.blocked.empty"] = ("Aucune application interceptée pour l’instant.", "No apps intercepted yet."),
+
+        ["settings.language"] = ("Langue", "Language"),
+        ["settings.language.label"] = ("Langue de l'interface", "Interface language"),
+        ["settings.focus"] = ("Focus", "Focus"),
+        ["settings.presets"] = ("Durées proposées", "Suggested durations"),
+        ["settings.presets.add"] = ("Ajouter", "Add"),
+        ["settings.startup"] = ("Démarrage", "Startup"),
+        ["settings.startup.label"] = ("Lancer Umbra au démarrage de Windows", "Launch Umbra when Windows starts"),
+        ["settings.startup.on"] = ("Umbra se lance actuellement avec Windows.", "Umbra currently launches with Windows."),
+        ["settings.startup.off"] = ("Umbra ne se lance pas automatiquement.", "Umbra doesn't launch automatically."),
+
+        ["settings.section.focus_sessions"] = ("Sessions de focus", "Focus sessions"),
+        ["settings.section.general"] = ("Général", "General"),
+        ["settings.periods.title"] = ("Périodes de focus", "Focus periods"),
+        ["settings.periods.desc"] = ("Ajuste la durée de tes périodes de focus, ou tes pauses, selon tes besoins.", "Adjust the lengths of your focus time, or breaks to fit your needs."),
+        ["settings.sound.session.title"] = ("Son de fin de session", "End of session sound"),
+        ["settings.sound.session.desc"] = ("Joue une alarme quand une période de focus se termine", "Play an alarm when focus period ends"),
+        ["settings.sound.break.title"] = ("Son de fin de pause", "End of break sound"),
+        ["settings.sound.break.desc"] = ("Joue une alarme quand une pause se termine", "Play an alarm when breaks end"),
+        ["settings.spotify.title"] = ("Spotify", "Spotify"),
+        ["settings.spotify.desc"] = ("Afficher la tuile dans l'expérience de session de focus", "Show tile in the focus session experience"),
+        ["settings.reminder.title"] = ("Rappels intelligents", "Smart reminders"),
+        ["settings.reminder.desc"] = ("Propose une session sans jamais la démarrer automatiquement", "Suggest a session without ever starting it automatically"),
+        ["settings.reminder.off"] = ("Désactivés", "Off"),
+        ["settings.reminder.manual"] = ("À une heure choisie", "At a chosen time"),
+        ["settings.reminder.automatic"] = ("Selon mes habitudes", "Based on my habits"),
+        ["settings.reminder.time"] = ("Heure du rappel (HH:mm)", "Reminder time (HH:mm)"),
+        ["settings.reminder.automatic.empty"] = ("L'heure sera proposée après quelques sessions enregistrées.", "A time will be suggested after a few recorded sessions."),
+        ["settings.reminder.automatic.hint"] = ("Selon tes habitudes récentes, le rappel sera proposé vers {0}.", "Based on your recent habits, the reminder will be suggested around {0}."),
+        ["reminder.notification.title"] = ("Prêt pour une session ?", "Ready for a focus session?"),
+        ["reminder.notification.body"] = ("C'est ton créneau habituel. Ouvre Umbra si tu veux commencer.", "This is your usual time. Open Umbra if you want to begin."),
+        ["settings.theme.title"] = ("Thème de l'application", "App theme"),
+        ["settings.theme.desc"] = ("Choisis le thème préféré de l'application", "Choose your preferred app theme"),
+        ["settings.theme.dark"] = ("Sombre", "Dark"),
+        ["settings.theme.light"] = ("Clair", "Light"),
+        ["settings.background.title"] = ("Image de fond", "Background image"),
+        ["settings.background.defaults"] = ("Fonds proposés", "Suggested backgrounds"),
+        ["settings.background.recent"] = ("Récemment utilisés", "Recently used"),
+        ["settings.background.none"] = ("Aucune image de fond.", "No background image."),
+        ["settings.background.current"] = ("Image actuelle : {0}", "Current image: {0}"),
+        ["settings.background.browse"] = ("Parcourir", "Browse"),
+        ["settings.background.clear"] = ("Retirer", "Remove"),
+        ["settings.background.opacity"] = ("Transparence des panneaux", "Panel transparency"),
+        ["settings.background.mode"] = ("Répartition du fond", "Background layout"),
+        ["settings.background.mode.desc"] = ("Choisir où le fond personnalisé apparaît", "Choose where the custom background appears"),
+        ["settings.background.mode.full"] = ("Fond sur toute l’interface", "Background across the whole interface"),
+        ["settings.background.mode.content"] = ("Fond principal · barre latérale unie", "Main background · solid sidebar"),
+        ["settings.background.mode.navigation"] = ("Barre latérale avec fond · principal uni", "Background sidebar · solid main area"),
+        ["settings.background.blur"] = ("Flou du fond", "Background blur"),
+        ["settings.floating.title"] = ("Minuteur flottant", "Floating timer"),
+        ["settings.floating.desc"] = ("Fond image ou MP4 du minuteur détaché", "Image or MP4 background for the detached timer"),
+        ["settings.floating.choose"] = ("Choisir un fond", "Choose background"),
+        ["settings.floating.blur"] = ("Flou du fond", "Background blur"),
+        ["settings.floating.presets"] = ("Fonds proposés", "Suggested backgrounds"),
+        ["floating.pomodoro.focus"] = ("Période de concentration ({0} sur {1})", "Focus period ({0} of {1})"),
+        ["floating.pomodoro.break"] = ("Pause ({0} sur {1})", "Break ({0} of {1})"),
+        ["floating.pomodoro.next.break"] = ("Ensuite : pause de {0} min", "Up next: {0} min break"),
+        ["floating.pomodoro.next.focus"] = ("Ensuite : période de concentration", "Up next: focus period"),
+        ["floating.pomodoro.last"] = ("Dernière période", "Final focus period"),
+        ["floating.free"] = ("Session libre", "Free session"),
+        ["floating.schedule"] = ("Planning · {0}", "Schedule · {0}"),
+        ["floating.ends"] = ("Fin à {0}", "Ends at {0}"),
+        ["focus.popout"] = ("Ouvrir le minuteur flottant", "Open floating timer"),
+        ["focus.daily"] = ("Progression du jour", "Daily progress"),
+        ["focus.daily.today"] = ("minutes", "minutes"),
+        ["focus.daily.goal"] = ("objectif", "goal"),
+        ["focus.daily.streak"] = ("jours de suite", "day streak"),
+        ["settings.notifications.title"] = ("Notifications", "Notifications"),
+        ["settings.notifications.desc"] = ("Modifie tes paramètres de notification", "Modify your notification settings"),
+        ["settings.notifications.link"] = ("Changer les paramètres de notification", "Change notification settings"),
+        ["settings.extension.title"] = ("Extension navigateur Umbra", "Umbra browser extension"),
+        ["settings.extension.desc"] = ("Bloque les sites dans Chrome, Vivaldi, Edge et Brave pendant les sessions.", "Blocks sites in Chrome, Vivaldi, Edge and Brave during sessions."),
+        ["settings.extension.install"] = ("Ouvrir le Chrome Web Store", "Open Chrome Web Store"),
+        ["settings.extension.ready"] = ("Le pont Umbra est prêt. Installe l’extension depuis la page qui vient de s’ouvrir.", "The Umbra bridge is ready. Install the extension from the page that just opened."),
+        ["settings.extension.error"] = ("Le pont navigateur est introuvable. Réinstalle Umbra.", "The browser bridge is missing. Reinstall Umbra."),
+        ["settings.privacy.title"] = ("Confidentialité", "Privacy"),
+        ["settings.privacy.desc"] = ("Tes données sont stockées sur cet appareil. Sélectionne Effacer l'historique pour les supprimer.", "Your data is stored on your device. Select Clear history to remove this data."),
+        ["settings.privacy.clear"] = ("Effacer l'historique", "Clear history"),
+        ["settings.privacy.confirm.title"] = ("Effacer l'historique ?", "Clear history?"),
+        ["settings.privacy.confirm.message"] = ("Ceci supprime définitivement tout ton historique de sessions de focus. Cette action est irréversible.", "This permanently deletes all your focus session history. This action cannot be undone."),
+    };
+
+    public static string T(string key) => Strings.TryGetValue(key, out var v) ? (Language == "en" ? v.En : v.Fr) : key;
+
+    // Lettres de jour affichées lundi->dimanche (index 0..6) - même ordre que
+    // Period.Days/History.GetWeekdayBreakdown, seule la lettre change de langue.
+    public static string[] DayLetters => Language == "en"
+        ? ["M", "T", "W", "T", "F", "S", "S"]
+        : ["L", "M", "M", "J", "V", "S", "D"];
+}

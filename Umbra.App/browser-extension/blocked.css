@@ -1,0 +1,8 @@
+:root { color-scheme: dark; font-family: "Segoe UI", system-ui, sans-serif; }
+* { box-sizing: border-box; }
+body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: radial-gradient(circle at 50% 20%, #24334b 0, #111318 52%, #090a0d 100%); color: #f5f7fb; }
+main { width: min(520px, calc(100vw - 48px)); padding: 48px; text-align: center; border: 1px solid rgba(255,255,255,.1); border-radius: 20px; background: rgba(24,27,34,.76); box-shadow: 0 24px 80px rgba(0,0,0,.35); backdrop-filter: blur(24px); }
+.mark { width: 64px; height: 64px; margin: 0 auto 20px; display: grid; place-items: center; border-radius: 18px; background: #168ad5; font-size: 34px; }
+.eyebrow { margin: 0 0 10px; color: #49b9ff; font-size: 12px; font-weight: 700; letter-spacing: .18em; }
+h1 { margin: 0 0 14px; font-size: 30px; line-height: 1.2; }
+main > p:last-child { margin: 0; color: #afb6c2; line-height: 1.6; }

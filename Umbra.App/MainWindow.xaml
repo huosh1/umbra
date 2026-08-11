@@ -1,0 +1,138 @@
+<ui:FluentWindow x:Class="Umbra.App.MainWindow"
+                 xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                 xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+                 xmlns:local="clr-namespace:Umbra.App"
+                 xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
+                 Title="Umbra" Height="640" Width="960" MinHeight="480" MinWidth="700"
+                 ExtendsContentIntoTitleBar="True"
+                 WindowBackdropType="Mica"
+                 WindowCornerPreference="Default">
+    <!-- Ambie a une vraie barre de titre système étendue (WinRT
+         ExtendViewIntoTitleBar) : les boutons min/agrandir/fermer sont
+         dessinés par DWM et flottent, transparents, par-dessus le contenu -
+         un seul bandeau continu, sans deuxième rangée. ui:TitleBar de WPF-UI
+         est un élément de mise en page normal (sa propre ligne dans la
+         Grid), pas cette extension native - impossible à reproduire à
+         l'identique avec. Plus simple et plus fidèle au résultat visuel
+         voulu : pas de barre de titre séparée du tout, le glisser-déposer
+         de fenêtre et les boutons système sont directement intégrés à
+         NowPlayingBar (voir WindowChrome ci-dessous + boutons dans
+         NowPlayingBar.xaml). -->
+    <shell:WindowChrome.WindowChrome>
+        <shell:WindowChrome CaptionHeight="64" ResizeBorderThickness="6" GlassFrameThickness="0" CornerRadius="0" />
+    </shell:WindowChrome.WindowChrome>
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- Image de fond personnalisée (Réglages > Background image),
+             floutée et posée tout au fond du Z-order - NavigationView vient
+             juste au-dessus avec ses fonds semi-transparents (voir
+             AppTheme.ApplyBackgroundImage) pour laisser le flou transparaître
+             derrière l'UI, comme sur Ambie. Collapsed par défaut (aucune
+             image) : ni Source ni Effect ne sont posés tant que
+             ApplyBackgroundImage() n'a pas été appelé avec un chemin. -->
+        <Image x:Name="BackgroundImageElement" Grid.Row="0" Stretch="UniformToFill" Visibility="Collapsed" />
+        <Border x:Name="SolidNavigationPaneLayer" Grid.Row="0" Width="260" HorizontalAlignment="Left"
+                Background="{DynamicResource NavigationPaneSolidBackground}" Visibility="Collapsed" />
+
+        <!-- NavigationView Fluent réel (WPF-UI). PaneDisplayMode=Left (panneau
+             fixe, toujours ouvert avec icône+texte) plutôt que LeftMinimal :
+             ce dernier ouvre le panneau via un Popup flottant dont le
+             positionnement se détraque sur un moniteur à coordonnées
+             négatives (multi-écran) - Left est un panneau docké classique,
+             sans cette classe de bug, et correspond de toute façon à l'état
+             observé sur la vraie appli Ambie aux largeurs de fenêtre usuelles.
+             Le contenu n'est PAS mis dans ContentOverlay (piège : cette
+             propriété est prévue pour une couche flottante AU-DESSUS du
+             Frame, elle interceptait les clics destinés au panneau de nav en
+             dessous). Le contenu de chaque page est injecté via
+             RootNavigation.ReplaceContent(...) en code-behind, dans le Frame
+             interne prévu pour ça.
+
+             SelectionChanged de NavigationView s'est avéré non fiable (le
+             MouseDown initial est absorbé par un Grid interne avant
+             d'atteindre l'item, empêchant le geste de clic de se compléter -
+             confirmé par du traçage d'événements). PreviewMouseLeftButtonUp
+             sur chaque item, lui, se déclenche de façon fiable (vérifié) -
+             c'est ce qui pilote la navigation ici, pas SelectionChanged. -->
+        <ui:NavigationView x:Name="RootNavigation" Grid.Row="0"
+                            PaneDisplayMode="Left"
+                            OpenPaneLength="260"
+                            IsPaneToggleVisible="False"
+                            IsBackButtonVisible="Collapsed"
+                            HeaderVisibility="Visible">
+            <!-- Bandeau "lecture en cours" façon Ambie - posé dans le Header
+                 de NavigationView (zone de contenu, à droite du panneau,
+                 au-dessus du Frame) plutôt qu'en ligne de Grid séparée au-dessus
+                 de toute la fenêtre : reste fixe (indépendant de ReplaceContent)
+                 sans jamais recouvrir le panneau de navigation, comme
+                 PlayerPanelGrid (Margin="72,0,0,0") dans le vrai ShellPage.xaml
+                 d'Ambie. -->
+            <ui:NavigationView.Header>
+                <local:NowPlayingBar />
+            </ui:NavigationView.Header>
+            <ui:NavigationView.PaneHeader>
+                <!-- Le panneau démarre aussi à y=0, dans la zone couverte par
+                     WindowChrome.CaptionHeight (48px) - sans
+                     IsHitTestVisibleInChrome=True ici, WindowChrome traiterait
+                     ce champ comme une zone de glisser-déposer de fenêtre au
+                     lieu de le laisser recevoir les clics normalement. Même
+                     raison sur chaque NavigationViewItem ci-dessous.
+
+                     Marge du haut portée à 20 (au lieu de 0) : sans barre de
+                     titre séparée, le champ recherche touchait directement le
+                     bord de la fenêtre - il lui faut un peu d'air, ce qui
+                     décale tout le reste du panneau (items en dessous) vers
+                     le bas du même coup. -->
+                <ui:TextBox x:Name="SearchBox" Margin="12,20,12,12" shell:WindowChrome.IsHitTestVisibleInChrome="True"
+                            TextChanged="SearchBox_TextChanged" KeyDown="SearchBox_KeyDown">
+                    <ui:TextBox.Icon>
+                        <ui:SymbolIcon Symbol="Search24" />
+                    </ui:TextBox.Icon>
+                </ui:TextBox>
+            </ui:NavigationView.PaneHeader>
+            <ui:NavigationView.MenuItems>
+                <!-- Foreground forcé explicitement (au lieu de compter sur
+                     l'héritage/le template par défaut) : les icônes/texte du
+                     panneau apparaissaient trop sombres sur certains rendus -
+                     un DynamicResource explicite lève toute ambiguïté.
+                     Content (le libellé) n'est pas posé en XAML : il vient de
+                     Loc.T(...) en code-behind, pour pouvoir changer de langue
+                     sans redémarrer l'app. -->
+                <ui:NavigationViewItem x:Name="FocusNavItem" Tag="focus" IsActive="True" PreviewMouseLeftButtonUp="NavItem_Click" shell:WindowChrome.IsHitTestVisibleInChrome="True" Foreground="{DynamicResource TextFillColorPrimaryBrush}">
+                    <ui:NavigationViewItem.Icon>
+                        <ui:SymbolIcon Symbol="Target24" Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
+                    </ui:NavigationViewItem.Icon>
+                </ui:NavigationViewItem>
+                <ui:NavigationViewItem x:Name="BlocklistNavItem" Tag="blocklist" PreviewMouseLeftButtonUp="NavItem_Click" shell:WindowChrome.IsHitTestVisibleInChrome="True" Foreground="{DynamicResource TextFillColorPrimaryBrush}">
+                    <ui:NavigationViewItem.Icon>
+                        <ui:SymbolIcon Symbol="Shield24" Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
+                    </ui:NavigationViewItem.Icon>
+                </ui:NavigationViewItem>
+                <ui:NavigationViewItem x:Name="StatsNavItem" Tag="stats" PreviewMouseLeftButtonUp="NavItem_Click" shell:WindowChrome.IsHitTestVisibleInChrome="True" Foreground="{DynamicResource TextFillColorPrimaryBrush}">
+                    <ui:NavigationViewItem.Icon>
+                        <ui:SymbolIcon Symbol="ArrowTrending24" Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
+                    </ui:NavigationViewItem.Icon>
+                </ui:NavigationViewItem>
+                <ui:NavigationViewItem x:Name="SoundsNavItem" Tag="sounds" PreviewMouseLeftButtonUp="NavItem_Click" shell:WindowChrome.IsHitTestVisibleInChrome="True" Foreground="{DynamicResource TextFillColorPrimaryBrush}">
+                    <ui:NavigationViewItem.Icon>
+                        <ui:SymbolIcon Symbol="MusicNote224" Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
+                    </ui:NavigationViewItem.Icon>
+                </ui:NavigationViewItem>
+            </ui:NavigationView.MenuItems>
+            <ui:NavigationView.FooterMenuItems>
+                <!-- Marge basse : sans barre de titre distincte, Réglages
+                     touchait le bord bas de la fenêtre - même logique que la
+                     marge haute de la recherche. -->
+                <ui:NavigationViewItem x:Name="SettingsNavItem" Tag="settings" Margin="0,0,0,10" PreviewMouseLeftButtonUp="NavItem_Click" shell:WindowChrome.IsHitTestVisibleInChrome="True" Foreground="{DynamicResource TextFillColorPrimaryBrush}">
+                    <ui:NavigationViewItem.Icon>
+                        <ui:SymbolIcon Symbol="Settings24" Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
+                    </ui:NavigationViewItem.Icon>
+                </ui:NavigationViewItem>
+            </ui:NavigationView.FooterMenuItems>
+        </ui:NavigationView>
+    </Grid>
+</ui:FluentWindow>

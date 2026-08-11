@@ -1,0 +1,32 @@
+<ui:FluentWindow x:Class="Umbra.App.RunningAppsPickerWindow"
+                 xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                 xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+                 Title="Umbra" Height="480" Width="380" MinWidth="320" MinHeight="320"
+                 WindowStartupLocation="CenterOwner"
+                 ExtendsContentIntoTitleBar="True"
+                 WindowBackdropType="Mica"
+                 WindowCornerPreference="Round">
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <TextBlock x:Name="TitleText" Grid.Row="0" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,12" />
+
+        <ui:TextBox x:Name="SearchBox" Grid.Row="1" Margin="0,0,0,10" TextChanged="SearchBox_TextChanged">
+            <ui:TextBox.Icon>
+                <ui:SymbolIcon Symbol="Search24" />
+            </ui:TextBox.Icon>
+        </ui:TextBox>
+
+        <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
+            <ItemsControl x:Name="AppsList" />
+        </ScrollViewer>
+
+        <ui:Button x:Name="CancelButton" Grid.Row="3" HorizontalAlignment="Right" Margin="0,12,0,0" Click="Cancel_Click" />
+    </Grid>
+</ui:FluentWindow>

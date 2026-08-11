@@ -1,0 +1,8 @@
+<Solution>
+  <Project Path="Umbra.App/Umbra.App.csproj">
+    <Platform Project="x64" />
+  </Project>
+  <Project Path="Umbra.Core/Umbra.Core.csproj" />
+  <Project Path="Umbra.BrowserHost/Umbra.BrowserHost.csproj" />
+  <Project Path="Umbra.Tests/Umbra.Tests.csproj" />
+</Solution>
