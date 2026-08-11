@@ -6,7 +6,8 @@
 #define MyAppUrl "https://github.com/huosh1/umbra"
 #define MyAppExeName "Umbra.exe"
 #define NativeHostName "com.umbra.browser_blocker"
-#define ExtensionId "ijgalicomdmmcjecigefpchbdeiadnld"
+#define StoreExtensionId "kihnnccjkhgjagaoljepcpghmfdpicoc"
+#define ManualExtensionId "ijgalicomdmmcjecigefpchbdeiadnld"
 
 [Setup]
 AppId={{9D559CAA-3786-44F0-92E4-27D289230FAE}
@@ -81,7 +82,7 @@ begin
   HostPath := ExpandConstant('{app}\Umbra.BrowserHost.exe');
   ForceDirectories(DataDirectory);
   Manifest := '{"name":"{#NativeHostName}","description":"Umbra browser blocking host","path":"' +
-    JsonEscape(HostPath) + '","type":"stdio","allowed_origins":["chrome-extension://{#ExtensionId}/"]}';
+    JsonEscape(HostPath) + '","type":"stdio","allowed_origins":["chrome-extension://{#StoreExtensionId}/","chrome-extension://{#ManualExtensionId}/"]}';
   SaveStringToFile(ManifestPath, Manifest, False);
 end;
 

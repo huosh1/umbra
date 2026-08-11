@@ -58,8 +58,9 @@ Developer mode in `chrome://extensions`, and choose **Load unpacked**.
 ## Browser support
 
 The native bridge is registered automatically for Chrome, Vivaldi, Microsoft
-Edge, and Brave. The published Chrome Web Store extension ID is fixed to
-`ijgalicomdmmcjecigefpchbdeiadnld`.
+Edge, and Brave. It accepts both the official Chrome Web Store extension
+(`kihnnccjkhgjagaoljepcpghmfdpicoc`) and the manually installed package
+(`ijgalicomdmmcjecigefpchbdeiadnld`).
 
 The extension only sends a matched blocked domain to the local Umbra process.
 It does not send browsing data to an Umbra server. See [PRIVACY.md](PRIVACY.md).
