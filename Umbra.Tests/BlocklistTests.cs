@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Umbra.Core;
 
 namespace Umbra.Tests;
@@ -38,6 +39,53 @@ public class BlocklistTests : IDisposable
         var loaded = Blocklist.Load();
         Assert.Equal(data.Apps, loaded.Apps);
         Assert.Equal(data.Sites, loaded.Sites);
+    }
+
+    [Fact]
+    public void Load_MigratesWebsiteEntriesStoredAsApplications()
+    {
+        File.WriteAllText(Config.BlocklistFile, """
+            {
+              "apps": ["Discord.exe", "youtube.com", "https://www.twitch.tv/videos/123"],
+              "sites": ["reddit.com"]
+            }
+            """);
+
+        var loaded = Blocklist.Load();
+
+        Assert.Equal(new[] { "Discord.exe" }, loaded.Apps);
+        Assert.Equal(new[] { "reddit.com", "youtube.com", "twitch.tv" }, loaded.Sites);
+
+        using var persisted = JsonDocument.Parse(File.ReadAllText(Config.BlocklistFile));
+        var persistedApps = persisted.RootElement.GetProperty("apps").EnumerateArray().Select(item => item.GetString()).ToList();
+        Assert.DoesNotContain("youtube.com", persistedApps);
+        Assert.DoesNotContain("twitch.tv", persistedApps);
+    }
+
+    [Theory]
+    [InlineData("youtube.com", "youtube.com")]
+    [InlineData("https://www.youtube.com/watch?v=abc", "youtube.com")]
+    [InlineData("*.twitch.tv", "twitch.tv")]
+    public void NormalizeSiteInput_ReturnsAHostOnly(string input, string expected)
+    {
+        Assert.Equal(expected, Blocklist.NormalizeSiteInput(input));
+    }
+
+    [Fact]
+    public void SavedProfiles_MigrateWebsiteEntriesStoredAsApplications()
+    {
+        File.WriteAllText(Config.SavedBlocklistsFile, """
+            [{ "name": "Focused", "apps": ["notepad.exe", "twitch.tv"], "sites": ["x.com"] }]
+            """);
+
+        var profile = Assert.Single(SavedBlocklists.Load());
+
+        Assert.Equal(new[] { "notepad.exe" }, profile.Apps);
+        Assert.Equal(new[] { "x.com", "twitch.tv" }, profile.Sites);
+
+        using var persisted = JsonDocument.Parse(File.ReadAllText(Config.SavedBlocklistsFile));
+        var persistedApps = persisted.RootElement[0].GetProperty("apps").EnumerateArray().Select(item => item.GetString()).ToList();
+        Assert.DoesNotContain("twitch.tv", persistedApps);
     }
 
     [Fact]
