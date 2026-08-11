@@ -92,7 +92,14 @@ public partial class App : Application
         _reallyQuitting = true;
         _reminderTimer?.Stop();
         _trayIcon?.Dispose();
+        MusicHistory.Flush();
         Shutdown();
+    }
+
+    protected override void OnExit(ExitEventArgs e)
+    {
+        MusicHistory.Flush();
+        base.OnExit(e);
     }
 
     private void CheckSmartReminder()

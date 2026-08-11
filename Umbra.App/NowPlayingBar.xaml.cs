@@ -160,7 +160,7 @@ public partial class NowPlayingBar : UserControl
         {
             var trackKey = $"{info.Title}\n{info.Artist}";
             var isNewPlay = !string.Equals(_lastPlayingTrack, trackKey, StringComparison.Ordinal);
-            MusicHistory.RecordPlayback(info.Title, info.Artist, 3, info.Thumbnail, isNewPlay);
+            await Task.Run(() => MusicHistory.RecordPlayback(info.Title, info.Artist, 3, info.Thumbnail, isNewPlay));
             _lastPlayingTrack = trackKey;
         }
         else

@@ -19,6 +19,7 @@ public partial class MainWindow : FluentWindow
 {
     private string _activeTag = "focus";
     private bool _navIndicatorReady;
+    private int _navigationVersion;
     private static readonly Dictionary<string, string> SearchIndex = new()
     {
         ["focus"] = "focus session sessions pomodoro pomodoro libre free schedule schedules planning minuteur timer hard mode blocklist tâche task",
@@ -49,12 +50,7 @@ public partial class MainWindow : FluentWindow
         Loaded += (_, _) =>
         {
             RootNavigation.ReplaceContent(PadPage(new FocusPage()), null);
-            QueueNavIndicatorMove(FocusNavItem, animate: false);
-        };
-        SizeChanged += (_, _) =>
-        {
-            if (GetNavigationItem(_activeTag) is { } item)
-                QueueNavIndicatorMove(item, animate: false);
+            MoveNavIndicator(FocusNavItem, animate: false);
         };
     }
 
@@ -142,6 +138,7 @@ public partial class MainWindow : FluentWindow
     private void NavigateTo(string tag, string? searchQuery = null)
     {
         _activeTag = tag;
+        var navigationVersion = ++_navigationVersion;
 
         foreach (var obj in RootNavigation.MenuItems)
         {
@@ -152,20 +149,27 @@ public partial class MainWindow : FluentWindow
             if (obj is NavigationViewItem item) item.IsActive = item.Tag as string == tag;
         }
 
-        UserControl page = tag switch
-        {
-            "focus" => new FocusPage(),
-            "blocklist" => new BlocklistPage(),
-            "stats" => new StatsPage(),
-            "sounds" => new SoundsPage(),
-            "settings" => new SettingsPage(),
-            _ => new FocusPage(),
-        };
-        if (page is SettingsPage settingsPage && !string.IsNullOrWhiteSpace(searchQuery)) settingsPage.ApplySearch(searchQuery);
-        RootNavigation.ReplaceContent(PadPage(page), null);
-
         if (GetNavigationItem(tag) is { } activeItem)
-            QueueNavIndicatorMove(activeItem, animate: _navIndicatorReady);
+            MoveNavIndicator(activeItem, animate: _navIndicatorReady);
+
+        // Give the selection indicator a render pass before constructing the
+        // destination page. Rapid searches also cancel stale page creations.
+        Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() =>
+        {
+            if (navigationVersion != _navigationVersion) return;
+
+            UserControl page = tag switch
+            {
+                "focus" => new FocusPage(),
+                "blocklist" => new BlocklistPage(),
+                "stats" => new StatsPage(),
+                "sounds" => new SoundsPage(),
+                "settings" => new SettingsPage(),
+                _ => new FocusPage(),
+            };
+            if (page is SettingsPage settingsPage && !string.IsNullOrWhiteSpace(searchQuery)) settingsPage.ApplySearch(searchQuery);
+            RootNavigation.ReplaceContent(PadPage(page), null);
+        }));
     }
 
     private NavigationViewItem? GetNavigationItem(string tag) => tag switch
@@ -178,37 +182,31 @@ public partial class MainWindow : FluentWindow
         _ => null,
     };
 
-    private void QueueNavIndicatorMove(FrameworkElement target, bool animate)
+    private void MoveNavIndicator(FrameworkElement target, bool animate)
     {
-        Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(() =>
+        if (!target.IsVisible || target.ActualHeight <= 0) return;
+
+        var position = target.TransformToAncestor(this).Transform(new Point(0, 0));
+        var targetY = position.Y + ((target.ActualHeight - AnimatedNavIndicator.Height) / 2);
+        var currentY = NavIndicatorTransform.Y;
+
+        // Remove any in-flight animation while preserving its currently
+        // rendered value, then make the target the stable base value.
+        NavIndicatorTransform.BeginAnimation(TranslateTransform.YProperty, null);
+        NavIndicatorTransform.Y = targetY;
+
+        if (animate && Math.Abs(targetY - currentY) > 0.5)
         {
-            if (!target.IsVisible || target.ActualHeight <= 0) return;
-
-            var position = target.TransformToAncestor(this).Transform(new Point(0, 0));
-            var targetY = position.Y + ((target.ActualHeight - AnimatedNavIndicator.Height) / 2);
-
-            if (!animate)
+            var animation = new DoubleAnimation(currentY, targetY, TimeSpan.FromMilliseconds(260))
             {
-                NavIndicatorTransform.BeginAnimation(TranslateTransform.YProperty, null);
-                NavIndicatorTransform.Y = targetY;
-            }
-            else
-            {
-                var animation = new DoubleAnimation
-                {
-                    From = NavIndicatorTransform.Y,
-                    To = targetY,
-                    Duration = TimeSpan.FromMilliseconds(220),
-                    EasingFunction = new CubicEase { EasingMode = EasingMode.EaseInOut },
-                    FillBehavior = FillBehavior.Stop,
-                };
-                animation.Completed += (_, _) => NavIndicatorTransform.Y = targetY;
-                NavIndicatorTransform.BeginAnimation(TranslateTransform.YProperty, animation);
-            }
+                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseInOut },
+                FillBehavior = FillBehavior.Stop,
+            };
+            NavIndicatorTransform.BeginAnimation(TranslateTransform.YProperty, animation);
+        }
 
-            AnimatedNavIndicator.Opacity = 1;
-            _navIndicatorReady = true;
-        }));
+        AnimatedNavIndicator.Opacity = 1;
+        _navIndicatorReady = true;
     }
 
     // Filtre les items de la barre latérale par libellé (langue courante) au

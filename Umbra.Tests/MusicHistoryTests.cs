@@ -37,4 +37,19 @@ public class MusicHistoryTests : IDisposable
 
         Assert.Equal(new byte[] { 3, 4 }, Assert.Single(MusicHistory.GetTopTracks(5)).Thumbnail);
     }
+
+    [Fact]
+    public void RecordPlayback_BatchesOrdinarySamplesUntilFlush()
+    {
+        MusicHistory.RecordPlayback("Orbit", "Weightlessness", 3, countAsPlay: true);
+        var persistedAfterNewPlay = File.ReadAllText(Config.MusicHistoryFile);
+
+        MusicHistory.RecordPlayback("Orbit", "Weightlessness", 3);
+
+        Assert.Equal(persistedAfterNewPlay, File.ReadAllText(Config.MusicHistoryFile));
+        Assert.Equal(6, Assert.Single(MusicHistory.GetTopTracks(5)).Seconds);
+
+        MusicHistory.Flush();
+        Assert.NotEqual(persistedAfterNewPlay, File.ReadAllText(Config.MusicHistoryFile));
+    }
 }
