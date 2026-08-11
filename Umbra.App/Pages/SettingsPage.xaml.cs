@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
@@ -18,6 +19,11 @@ public partial class SettingsPage : UserControl
 
     private AppSettings _settings = Settings.Load();
     private bool _loaded;
+    private bool _backgroundGalleryRendered;
+    private bool _floatingGalleryRendered;
+    private static readonly ConcurrentDictionary<string, Task<BitmapSource?>> ThumbnailCache =
+        new(StringComparer.OrdinalIgnoreCase);
+    private static readonly SemaphoreSlim ThumbnailDecodeGate = new(4, 4);
 
     public SettingsPage()
     {
@@ -93,14 +99,14 @@ public partial class SettingsPage : UserControl
         SmartReminderModeBox.SelectedIndex = _settings.SmartReminderMode switch { "manual" => 1, "automatic" => 2, _ => 0 };
         SmartReminderTimeBox.Text = _settings.SmartReminderTime;
         FloatingFocusBlurSlider.Value = _settings.FloatingFocusBlur;
-        RenderFloatingFocusStatus();
+        UpdateFloatingFocusCurrentText();
         UpdateSmartReminderUi();
         BackgroundOpacitySlider.Value = _settings.BackgroundOverlayOpacity;
         BackgroundBlurSlider.Value = _settings.BackgroundBlur;
         BackgroundModeBox.SelectedIndex = _settings.BackgroundAppearanceMode switch { "content" => 1, "navigation" => 2, _ => 0 };
         RenderPresets();
         RenderClockStyles();
-        RenderBackgroundStatus();
+        UpdateBackgroundCurrentText();
         RefreshStartupStatus();
         RefreshUpdateStatus();
         _loaded = true;
@@ -227,6 +233,7 @@ public partial class SettingsPage : UserControl
         if (SmartReminderTimePanel is null || SmartReminderAutomaticHintText is null) return;
         SmartReminderTimePanel.Visibility = _settings.SmartReminderMode == "manual" ? Visibility.Visible : Visibility.Collapsed;
         SmartReminderAutomaticHintText.Visibility = _settings.SmartReminderMode == "automatic" ? Visibility.Visible : Visibility.Collapsed;
+        if (_settings.SmartReminderMode != "automatic") return;
         var suggestedHour = History.GetSuggestedStartHour();
         SmartReminderAutomaticHintText.Text = suggestedHour is null
             ? Loc.T("settings.reminder.automatic.empty")
@@ -301,11 +308,28 @@ public partial class SettingsPage : UserControl
 
     private void RenderBackgroundStatus()
     {
+        UpdateBackgroundCurrentText();
+        if (!BackgroundExpander.IsExpanded)
+        {
+            _backgroundGalleryRendered = false;
+            return;
+        }
+        RenderRecentBackgrounds();
+        RenderDefaultBackgrounds();
+        _backgroundGalleryRendered = true;
+    }
+
+    private void UpdateBackgroundCurrentText()
+    {
         BackgroundCurrentText.Text = string.IsNullOrWhiteSpace(_settings.BackgroundImagePath)
             ? Loc.T("settings.background.none")
             : string.Format(Loc.T("settings.background.current"), System.IO.Path.GetFileName(_settings.BackgroundImagePath));
-        RenderRecentBackgrounds();
-        RenderDefaultBackgrounds();
+    }
+
+    private void BackgroundExpander_Expanded(object sender, RoutedEventArgs e)
+    {
+        if (_backgroundGalleryRendered) return;
+        RenderBackgroundStatus();
     }
 
     private void RenderDefaultBackgrounds()
@@ -348,21 +372,13 @@ public partial class SettingsPage : UserControl
     private Border CreateBackgroundThumbnail(string path)
     {
             var isActive = string.Equals(path, _settings.BackgroundImagePath, StringComparison.OrdinalIgnoreCase);
-            var bitmap = new BitmapImage();
-            bitmap.BeginInit();
-            bitmap.CacheOption = BitmapCacheOption.OnLoad;
-            bitmap.DecodePixelWidth = 96;
-            bitmap.UriSource = new Uri(path, UriKind.Absolute);
-            bitmap.EndInit();
-            bitmap.Freeze();
-
             var image = new System.Windows.Controls.Image
             {
-                Source = bitmap,
                 Width = 72,
                 Height = 48,
                 Stretch = System.Windows.Media.Stretch.UniformToFill,
             };
+            LoadThumbnail(image, path);
             var border = new System.Windows.Controls.Border
             {
                 Width = 72,
@@ -444,9 +460,12 @@ public partial class SettingsPage : UserControl
 
     private void RenderFloatingFocusStatus()
     {
-        FloatingFocusCurrentText.Text = string.IsNullOrWhiteSpace(_settings.FloatingFocusBackgroundPath)
-            ? Loc.T("settings.background.none")
-            : string.Format(Loc.T("settings.background.current"), System.IO.Path.GetFileName(_settings.FloatingFocusBackgroundPath));
+        UpdateFloatingFocusCurrentText();
+        if (!FloatingFocusExpander.IsExpanded)
+        {
+            _floatingGalleryRendered = false;
+            return;
+        }
         FloatingFocusPresetsList.Items.Clear();
         var presetFolders = new[]
         {
@@ -471,6 +490,20 @@ public partial class SettingsPage : UserControl
             FloatingFocusRecentList.Items.Add(CreateFloatingBackgroundPreview(path));
         FloatingFocusRecentLabel.Visibility = FloatingFocusRecentList.Items.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
         FloatingFocusRecentList.Visibility = FloatingFocusRecentList.Items.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+        _floatingGalleryRendered = true;
+    }
+
+    private void UpdateFloatingFocusCurrentText()
+    {
+        FloatingFocusCurrentText.Text = string.IsNullOrWhiteSpace(_settings.FloatingFocusBackgroundPath)
+            ? Loc.T("settings.background.none")
+            : string.Format(Loc.T("settings.background.current"), System.IO.Path.GetFileName(_settings.FloatingFocusBackgroundPath));
+    }
+
+    private void FloatingFocusExpander_Expanded(object sender, RoutedEventArgs e)
+    {
+        if (_floatingGalleryRendered) return;
+        RenderFloatingFocusStatus();
     }
 
     private static bool IsSupportedFloatingBackground(string path) =>
@@ -492,9 +525,9 @@ public partial class SettingsPage : UserControl
         }
         else
         {
-            var bitmap = new BitmapImage();
-            bitmap.BeginInit(); bitmap.CacheOption = BitmapCacheOption.OnLoad; bitmap.DecodePixelWidth = 160; bitmap.UriSource = new Uri(path); bitmap.EndInit(); bitmap.Freeze();
-            preview = new Image { Source = bitmap, Stretch = Stretch.UniformToFill };
+            var image = new Image { Stretch = Stretch.UniformToFill };
+            LoadThumbnail(image, path);
+            preview = image;
         }
         var border = new Border
         {
@@ -524,6 +557,49 @@ public partial class SettingsPage : UserControl
             };
         }
         return border;
+    }
+
+    private static async void LoadThumbnail(Image image, string path)
+    {
+        try
+        {
+            var bitmap = await ThumbnailCache.GetOrAdd(path, DecodeThumbnailAsync);
+            if (bitmap is not null) image.Source = bitmap;
+        }
+        catch
+        {
+            // A missing or damaged optional background must never break Settings.
+        }
+    }
+
+    private static async Task<BitmapSource?> DecodeThumbnailAsync(string path)
+    {
+        await ThumbnailDecodeGate.WaitAsync();
+        try
+        {
+            return await Task.Run<BitmapSource?>(() =>
+            {
+                try
+                {
+                    var bitmap = new BitmapImage();
+                    bitmap.BeginInit();
+                    bitmap.CacheOption = BitmapCacheOption.OnLoad;
+                    bitmap.DecodePixelWidth = 160;
+                    bitmap.UriSource = new Uri(path, UriKind.Absolute);
+                    bitmap.EndInit();
+                    bitmap.Freeze();
+                    return bitmap;
+                }
+                catch
+                {
+                    return null;
+                }
+            });
+        }
+        finally
+        {
+            ThumbnailDecodeGate.Release();
+        }
     }
 
     private void SelectFloatingBackground(string path, bool remember)
