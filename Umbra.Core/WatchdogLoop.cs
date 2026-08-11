@@ -69,6 +69,27 @@ public static class WatchdogLoop
             _notify = notify;
         }
 
+        public async Task CleanupAsync()
+        {
+            try
+            {
+                Blocker.RemoveSiteBlock();
+            }
+            catch (Exception err)
+            {
+                Log($"ERROR failed to remove site block: {err.Message}");
+            }
+            try
+            {
+                await Blocker.RemoveDohBlockAsync();
+            }
+            catch (Exception err)
+            {
+                Log($"ERROR failed to remove doh block: {err.Message}");
+            }
+            _dohBlockApplied = false;
+        }
+
         public async Task TickAsync()
         {
             var s = Session.Load(); // fait aussi avancer les phases pomodoro dues
@@ -152,23 +173,7 @@ public static class WatchdogLoop
                 // bloquer est sans coût et garantit qu'un blocage orphelin
                 // se résorbe de lui-même en un tick au lieu de rester
                 // bloqué à vie.
-                try
-                {
-                    Blocker.RemoveSiteBlock();
-                }
-                catch (Exception err)
-                {
-                    Log($"ERROR failed to remove site block: {err.Message}");
-                }
-                try
-                {
-                    await Blocker.RemoveDohBlockAsync();
-                }
-                catch (Exception err)
-                {
-                    Log($"ERROR failed to remove doh block: {err.Message}");
-                }
-                _dohBlockApplied = false;
+                await CleanupAsync();
             }
 
             // Fin de vie d'une session "custom" expirée : indépendant du
@@ -211,6 +216,16 @@ public static class WatchdogLoop
 
         while (!cancellationToken.IsCancellationRequested)
         {
+            if (File.Exists(Config.WatchdogStopRequestFile))
+            {
+                Log("watchdog stopping for update");
+                await enforcer.CleanupAsync();
+                try { File.Delete(Config.WatchdogStopRequestFile); } catch { }
+                try { File.Delete(Config.WatchdogPidFile); } catch { }
+                try { File.WriteAllText(Config.WatchdogStoppedFile, DateTime.UtcNow.ToString("O")); } catch { }
+                return;
+            }
+
             TouchHeartbeat();
             try
             {

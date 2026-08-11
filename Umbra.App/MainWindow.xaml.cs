@@ -4,8 +4,11 @@ using System.Text;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Media.Animation;
 using System.Windows.Media.Effects;
 using System.Windows.Media.Imaging;
+using System.Windows.Threading;
 using Umbra.App.Pages;
 using Umbra.Core;
 using Wpf.Ui.Controls;
@@ -15,6 +18,8 @@ namespace Umbra.App;
 public partial class MainWindow : FluentWindow
 {
     private string _activeTag = "focus";
+    private bool _navIndicatorReady;
+    private int _navigationVersion;
     private static readonly Dictionary<string, string> SearchIndex = new()
     {
         ["focus"] = "focus session sessions pomodoro pomodoro libre free schedule schedules planning minuteur timer hard mode blocklist tâche task",
@@ -42,7 +47,11 @@ public partial class MainWindow : FluentWindow
         // ReplaceContent a besoin que le template du contrôle (Frame interne)
         // soit déjà appliqué - l'appeler depuis le constructeur (avant que la
         // fenêtre soit chargée) lève une NullReferenceException.
-        Loaded += (_, _) => RootNavigation.ReplaceContent(PadPage(new FocusPage()), null);
+        Loaded += (_, _) =>
+        {
+            RootNavigation.ReplaceContent(PadPage(new FocusPage()), null);
+            MoveNavIndicator(FocusNavItem, animate: false);
+        };
     }
 
     // Image de fond personnalisée (Réglages > Background image) - floutée et
@@ -129,6 +138,7 @@ public partial class MainWindow : FluentWindow
     private void NavigateTo(string tag, string? searchQuery = null)
     {
         _activeTag = tag;
+        var navigationVersion = ++_navigationVersion;
 
         foreach (var obj in RootNavigation.MenuItems)
         {
@@ -139,17 +149,64 @@ public partial class MainWindow : FluentWindow
             if (obj is NavigationViewItem item) item.IsActive = item.Tag as string == tag;
         }
 
-        UserControl page = tag switch
+        if (GetNavigationItem(tag) is { } activeItem)
+            MoveNavIndicator(activeItem, animate: _navIndicatorReady);
+
+        // Give the selection indicator a render pass before constructing the
+        // destination page. Rapid searches also cancel stale page creations.
+        Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() =>
         {
-            "focus" => new FocusPage(),
-            "blocklist" => new BlocklistPage(),
-            "stats" => new StatsPage(),
-            "sounds" => new SoundsPage(),
-            "settings" => new SettingsPage(),
-            _ => new FocusPage(),
-        };
-        if (page is SettingsPage settingsPage && !string.IsNullOrWhiteSpace(searchQuery)) settingsPage.ApplySearch(searchQuery);
-        RootNavigation.ReplaceContent(PadPage(page), null);
+            if (navigationVersion != _navigationVersion) return;
+
+            UserControl page = tag switch
+            {
+                "focus" => new FocusPage(),
+                "blocklist" => new BlocklistPage(),
+                "stats" => new StatsPage(),
+                "sounds" => new SoundsPage(),
+                "settings" => new SettingsPage(),
+                _ => new FocusPage(),
+            };
+            if (page is SettingsPage settingsPage && !string.IsNullOrWhiteSpace(searchQuery)) settingsPage.ApplySearch(searchQuery);
+            RootNavigation.ReplaceContent(PadPage(page), null);
+        }));
+    }
+
+    private NavigationViewItem? GetNavigationItem(string tag) => tag switch
+    {
+        "focus" => FocusNavItem,
+        "blocklist" => BlocklistNavItem,
+        "stats" => StatsNavItem,
+        "sounds" => SoundsNavItem,
+        "settings" => SettingsNavItem,
+        _ => null,
+    };
+
+    private void MoveNavIndicator(FrameworkElement target, bool animate)
+    {
+        if (!target.IsVisible || target.ActualHeight <= 0) return;
+
+        var position = target.TransformToAncestor(this).Transform(new Point(0, 0));
+        var targetY = position.Y + ((target.ActualHeight - AnimatedNavIndicator.Height) / 2);
+        var currentY = NavIndicatorTransform.Y;
+
+        // Remove any in-flight animation while preserving its currently
+        // rendered value, then make the target the stable base value.
+        NavIndicatorTransform.BeginAnimation(TranslateTransform.YProperty, null);
+        NavIndicatorTransform.Y = targetY;
+
+        if (animate && Math.Abs(targetY - currentY) > 0.5)
+        {
+            var animation = new DoubleAnimation(currentY, targetY, TimeSpan.FromMilliseconds(260))
+            {
+                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseInOut },
+                FillBehavior = FillBehavior.Stop,
+            };
+            NavIndicatorTransform.BeginAnimation(TranslateTransform.YProperty, animation);
+        }
+
+        AnimatedNavIndicator.Opacity = 1;
+        _navIndicatorReady = true;
     }
 
     // Filtre les items de la barre latérale par libellé (langue courante) au

@@ -23,6 +23,8 @@ internal static class WatchdogSupervisor
     public static void Ensure()
     {
         if (IsAlive()) return;
+        DeleteSignalFile(Config.WatchdogStopRequestFile);
+        DeleteSignalFile(Config.WatchdogStoppedFile);
         try
         {
             var exePath = Process.GetCurrentProcess().MainModule?.FileName;
@@ -38,6 +40,51 @@ internal static class WatchdogSupervisor
         catch
         {
             // UAC refusée ou autre échec : pas de blocage tant que l'utilisateur ne relance pas manuellement
+        }
+    }
+
+    public static async Task<bool> StopForUpdateAsync(CancellationToken cancellationToken = default)
+    {
+        if (!IsAlive())
+        {
+            DeleteSignalFile(Config.WatchdogStopRequestFile);
+            DeleteSignalFile(Config.WatchdogStoppedFile);
+            return true;
+        }
+
+        DeleteSignalFile(Config.WatchdogStoppedFile);
+        try
+        {
+            File.WriteAllText(Config.WatchdogStopRequestFile, DateTime.UtcNow.ToString("O"));
+        }
+        catch
+        {
+            return false;
+        }
+
+        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(10);
+        while (DateTime.UtcNow < deadline)
+        {
+            if (File.Exists(Config.WatchdogStoppedFile))
+            {
+                DeleteSignalFile(Config.WatchdogStoppedFile);
+                return true;
+            }
+            await Task.Delay(200, cancellationToken);
+        }
+
+        DeleteSignalFile(Config.WatchdogStopRequestFile);
+        return !IsAlive();
+    }
+
+    private static void DeleteSignalFile(string path)
+    {
+        try
+        {
+            if (File.Exists(path)) File.Delete(path);
+        }
+        catch
+        {
         }
     }
 }

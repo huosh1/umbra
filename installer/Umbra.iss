@@ -59,11 +59,17 @@ Root: HKCU; Subkey: "Software\BraveSoftware\Brave-Browser\NativeMessagingHosts\{
 
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,Umbra}"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\{#MyAppExeName}"; Parameters: "--updated"; Flags: nowait skipifdoesntexist; Check: IsUpdateMode
 
 [UninstallDelete]
 Type: files; Name: "{userappdata}\UmbraNative\data\browser-native-host.json"
 
 [Code]
+function IsUpdateMode: Boolean;
+begin
+  Result := CompareText(ExpandConstant('{param:UPDATE|0}'), '1') = 0;
+end;
+
 function JsonEscape(Value: String): String;
 begin
   StringChangeEx(Value, '\', '\\', True);

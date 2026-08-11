@@ -23,6 +23,8 @@ public partial class SettingsPage : UserControl
     {
         InitializeComponent();
         _loaded = false;
+        Loaded += SettingsPage_Loaded;
+        Unloaded += SettingsPage_Unloaded;
 
         FocusSessionsHeaderText.Text = Loc.T("settings.section.focus_sessions");
         PeriodsTitleText.Text = Loc.T("settings.periods.title");
@@ -67,6 +69,7 @@ public partial class SettingsPage : UserControl
         BackgroundModeNavigationItem.Content = Loc.T("settings.background.mode.navigation");
         BackgroundBlurLabelText.Text = Loc.T("settings.background.blur");
         StartupLabelText.Text = Loc.T("settings.startup.label");
+        UpdateTitleText.Text = Loc.T("settings.update.title");
         NotificationsTitleText.Text = Loc.T("settings.notifications.title");
         NotificationsDescText.Text = Loc.T("settings.notifications.desc");
         NotificationsLinkButton.ToolTip = Loc.T("settings.notifications.link");
@@ -93,6 +96,7 @@ public partial class SettingsPage : UserControl
         RenderPresets();
         RenderBackgroundStatus();
         RefreshStartupStatus();
+        RefreshUpdateStatus();
         _loaded = true;
     }
 
@@ -500,6 +504,75 @@ public partial class SettingsPage : UserControl
             key.DeleteValue(RunValueName, throwOnMissingValue: false);
         }
         RefreshStartupStatus();
+    }
+
+    private void SettingsPage_Loaded(object sender, RoutedEventArgs e)
+    {
+        if (Application.Current is App app) app.UpdateStatusChanged += App_UpdateStatusChanged;
+        RefreshUpdateStatus();
+    }
+
+    private void SettingsPage_Unloaded(object sender, RoutedEventArgs e)
+    {
+        if (Application.Current is App app) app.UpdateStatusChanged -= App_UpdateStatusChanged;
+    }
+
+    private void App_UpdateStatusChanged()
+    {
+        if (!Dispatcher.CheckAccess())
+        {
+            Dispatcher.BeginInvoke(RefreshUpdateStatus);
+            return;
+        }
+        RefreshUpdateStatus();
+    }
+
+    private void RefreshUpdateStatus()
+    {
+        if (Application.Current is not App app) return;
+        var status = app.UpdateStatus;
+        UpdateProgressBar.Visibility = status.Phase is UpdatePhase.Checking or UpdatePhase.Downloading or UpdatePhase.Installing
+            ? Visibility.Visible : Visibility.Collapsed;
+        UpdateProgressBar.IsIndeterminate = status.Phase == UpdatePhase.Checking;
+        UpdateProgressBar.Value = status.Progress * 100;
+        UpdateButton.IsEnabled = status.Phase is not (UpdatePhase.Checking or UpdatePhase.Downloading or UpdatePhase.Installing);
+
+        switch (status.Phase)
+        {
+            case UpdatePhase.Checking:
+                UpdateStatusText.Text = Loc.T("settings.update.checking");
+                UpdateButton.Content = Loc.T("settings.update.checking.button");
+                break;
+            case UpdatePhase.UpToDate:
+                UpdateStatusText.Text = string.Format(Loc.T("settings.update.current"), status.CurrentVersion);
+                UpdateButton.Content = Loc.T("settings.update.check");
+                break;
+            case UpdatePhase.Available:
+                UpdateStatusText.Text = string.Format(Loc.T("settings.update.available"), status.LatestVersion);
+                UpdateButton.Content = Loc.T("settings.update.install");
+                break;
+            case UpdatePhase.Downloading:
+                UpdateStatusText.Text = string.Format(Loc.T("settings.update.downloading"), Math.Round(status.Progress * 100));
+                UpdateButton.Content = Loc.T("settings.update.install");
+                break;
+            case UpdatePhase.Installing:
+                UpdateStatusText.Text = Loc.T("settings.update.installing");
+                UpdateButton.Content = Loc.T("settings.update.install");
+                break;
+            case UpdatePhase.Failed:
+                UpdateStatusText.Text = Loc.T("settings.update.failed");
+                UpdateButton.Content = Loc.T("settings.update.retry");
+                break;
+            default:
+                UpdateStatusText.Text = string.Format(Loc.T("settings.update.current"), status.CurrentVersion);
+                UpdateButton.Content = Loc.T("settings.update.check");
+                break;
+        }
+    }
+
+    private async void UpdateButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (Application.Current is App app) await app.CheckForUpdatesAsync(userInitiated: true);
     }
 
     private void NotificationsLink_Click(object sender, RoutedEventArgs e)

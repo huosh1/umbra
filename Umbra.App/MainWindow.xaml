@@ -8,6 +8,13 @@
                  ExtendsContentIntoTitleBar="True"
                  WindowBackdropType="Mica"
                  WindowCornerPreference="Default">
+    <ui:FluentWindow.Resources>
+        <!-- The stock NavigationView creates one selection marker per item,
+             so it jumps when the active page changes. Hide those markers and
+             draw one shared indicator above the pane instead; code-behind
+             animates that single element between the item positions. -->
+        <SolidColorBrush x:Key="NavigationViewSelectionIndicatorForeground" Color="Transparent" />
+    </ui:FluentWindow.Resources>
     <!-- Ambie a une vraie barre de titre système étendue (WinRT
          ExtendViewIntoTitleBar) : les boutons min/agrandir/fermer sont
          dessinés par DWM et flottent, transparents, par-dessus le contenu -
@@ -35,7 +42,7 @@
              image) : ni Source ni Effect ne sont posés tant que
              ApplyBackgroundImage() n'a pas été appelé avec un chemin. -->
         <Image x:Name="BackgroundImageElement" Grid.Row="0" Stretch="UniformToFill" Visibility="Collapsed" />
-        <Border x:Name="SolidNavigationPaneLayer" Grid.Row="0" Width="260" HorizontalAlignment="Left"
+        <Border x:Name="SolidNavigationPaneLayer" Grid.Row="0" Width="269" HorizontalAlignment="Left"
                 Background="{DynamicResource NavigationPaneSolidBackground}" Visibility="Collapsed" />
 
         <!-- NavigationView Fluent réel (WPF-UI). PaneDisplayMode=Left (panneau
@@ -134,5 +141,17 @@
                 </ui:NavigationViewItem>
             </ui:NavigationView.FooterMenuItems>
         </ui:NavigationView>
+
+        <!-- A single Fluent selection marker that glides between navigation
+             items. It sits above NavigationView but never intercepts input. -->
+        <Border x:Name="AnimatedNavIndicator" Grid.Row="0" Panel.ZIndex="20"
+                Width="3" Height="16" Margin="4,0,0,0"
+                HorizontalAlignment="Left" VerticalAlignment="Top"
+                Background="{DynamicResource AccentFillColorDefaultBrush}"
+                CornerRadius="1.5" IsHitTestVisible="False" Opacity="0">
+            <Border.RenderTransform>
+                <TranslateTransform x:Name="NavIndicatorTransform" />
+            </Border.RenderTransform>
+        </Border>
     </Grid>
 </ui:FluentWindow>

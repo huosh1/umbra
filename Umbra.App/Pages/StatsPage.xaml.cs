@@ -15,8 +15,11 @@ namespace Umbra.App.Pages;
 public partial class StatsPage : UserControl
 {
     private readonly DispatcherTimer _refreshTimer;
+    private readonly SemaphoreSlim _musicRefreshGate = new(1, 1);
     private bool _activityFiltersReady;
     private bool _musicExpanded;
+    private long _lastMusicRevision = -1;
+    private string? _renderedMusicSignature;
     // Clés de ressource réelles de WPF-UI (thème Fluent2/WinUI3), relevées en
     // énumérant les ResourceDictionary fusionnés au runtime plutôt que
     // devinées - évite de retomber dans le piège des clés inventées de la
@@ -28,15 +31,15 @@ public partial class StatsPage : UserControl
         InitializeComponent();
 
         _refreshTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(10) };
-        _refreshTimer.Tick += (_, _) =>
+        _refreshTimer.Tick += async (_, _) =>
         {
-            RenderMusic();
+            await RefreshMusicAsync(force: false);
             RenderBlockedAttempts();
         };
-        Loaded += (_, _) =>
+        Loaded += async (_, _) =>
         {
-            RenderMusic();
-            _refreshTimer.Start();
+            await RefreshMusicAsync(force: true);
+            if (IsLoaded) _refreshTimer.Start();
         };
         Unloaded += (_, _) => _refreshTimer.Stop();
 
@@ -50,7 +53,6 @@ public partial class StatsPage : UserControl
 
         RenderStreak();
         RenderSummary();
-        RenderMusic();
         RenderActivityHeatmap();
         RenderBlockedAttempts();
     }
@@ -160,14 +162,48 @@ public partial class StatsPage : UserControl
         }
     }
 
-    private void RenderMusic()
+    private async Task RefreshMusicAsync(bool force)
+    {
+        // The expanded list is a snapshot. Rebuilding up to 100 decoded
+        // artworks every ten seconds would create the same periodic stutter
+        // this method is designed to avoid; toggling the list refreshes it.
+        if (_musicExpanded && !force) return;
+
+        await _musicRefreshGate.WaitAsync();
+        try
+        {
+            var revisionBeforeLoad = MusicHistory.Revision;
+            if (!force && revisionBeforeLoad == _lastMusicRevision) return;
+
+            var limit = _musicExpanded ? 100 : 10;
+            var tracks = await Task.Run(() => MusicHistory.GetTopTracks(limit));
+            var revisionAfterLoad = MusicHistory.Revision;
+            if (!IsLoaded) return;
+
+            var signature = BuildMusicSignature(tracks, _musicExpanded);
+            _lastMusicRevision = revisionAfterLoad;
+            if (!force && string.Equals(signature, _renderedMusicSignature, StringComparison.Ordinal)) return;
+
+            _renderedMusicSignature = signature;
+            RenderMusic(tracks);
+        }
+        finally
+        {
+            _musicRefreshGate.Release();
+        }
+    }
+
+    private static string BuildMusicSignature(IEnumerable<TrackPlayTime> tracks, bool expanded) =>
+        $"{expanded}|" + string.Join('|', tracks.Select(track =>
+            $"{track.Title}\u001f{track.Artist}\u001f{track.PlayCount}\u001f{Math.Round(track.Seconds / 60)}\u001f{track.Thumbnail?.Length ?? 0}"));
+
+    private void RenderMusic(IReadOnlyList<TrackPlayTime> tracks)
     {
         // La vue dépliée reste volontairement plafonnée : créer des centaines
         // de BitmapImage et de tuiles après plusieurs années finirait par
         // rendre l'ouverture de Stats coûteuse. L'historique sur disque, lui,
         // n'est pas tronqué.
-        var allTracks = MusicHistory.GetTopTracks(100);
-        var tracks = allTracks.Take(10).ToList();
+        var allTracks = tracks;
         MusicList.Items.Clear();
         AllMusicList.Items.Clear();
 
@@ -187,19 +223,24 @@ public partial class StatsPage : UserControl
         MusicTotalText.Text = Loc.Language == "fr"
             ? $"{allTracks.Count} titre{(allTracks.Count == 1 ? "" : "s")} · {totalPlays} écoute{(totalPlays == 1 ? "" : "s")} · {totalMinutes} min au total"
             : $"{allTracks.Count} track{(allTracks.Count == 1 ? "" : "s")} · {totalPlays} play{(totalPlays == 1 ? "" : "s")} · {totalMinutes} min total";
-        for (var i = 0; i < tracks.Count; i++)
+        if (!_musicExpanded)
         {
-            MusicList.Items.Add(BuildTrackTile(tracks[i], i + 1, fillWidth: true));
+            for (var i = 0; i < tracks.Count; i++)
+                MusicList.Items.Add(BuildTrackTile(tracks[i], i + 1, fillWidth: true));
         }
-        for (var i = 0; i < allTracks.Count; i++) AllMusicList.Items.Add(BuildTrackTile(allTracks[i], i + 1));
+        else
+        {
+            for (var i = 0; i < tracks.Count; i++)
+                AllMusicList.Items.Add(BuildTrackTile(tracks[i], i + 1));
+        }
     }
 
-    private void MusicHeader_Click(object sender, RoutedEventArgs e)
+    private async void MusicHeader_Click(object sender, RoutedEventArgs e)
     {
         _musicExpanded = !_musicExpanded;
         if (MusicExpandGlyph.RenderTransform is RotateTransform rotate)
             rotate.BeginAnimation(RotateTransform.AngleProperty, new DoubleAnimation(_musicExpanded ? 180 : 0, TimeSpan.FromMilliseconds(160)));
-        RenderMusic();
+        await RefreshMusicAsync(force: true);
         if (_musicExpanded)
             AllMusicList.BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(180)));
     }
