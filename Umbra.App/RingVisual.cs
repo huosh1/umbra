@@ -18,7 +18,6 @@ public static class RingVisual
         return style?.ToLowerInvariant() switch
         {
             "orbit" => BuildOrbit(diameter, fraction, trackBrush, progressBrush, centerValue, textBrush),
-            "simple" => BuildMinimal(diameter, fraction, trackBrush, progressBrush, centerValue, "", textBrush),
             "arc" => BuildOpenArc(diameter, fraction, trackBrush, progressBrush, centerValue, textBrush),
             "digital" => BuildDigital(diameter, fraction, trackBrush, progressBrush, centerValue, textBrush),
             _ => BuildHalo(diameter, fraction, trackBrush, progressBrush, centerValue, textBrush),

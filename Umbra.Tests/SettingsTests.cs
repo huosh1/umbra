@@ -29,7 +29,6 @@ public class SettingsTests : IDisposable
     [Theory]
     [InlineData("halo")]
     [InlineData("orbit")]
-    [InlineData("simple")]
     [InlineData("arc")]
     [InlineData("digital")]
     public void FocusClockStyle_RoundTrips(string style)
@@ -39,5 +38,15 @@ public class SettingsTests : IDisposable
         var loaded = Settings.Load();
 
         Assert.Equal(style, loaded.FocusClockStyle);
+    }
+
+    [Fact]
+    public void RemovedFocusClockStyle_FallsBackToHalo()
+    {
+        Settings.Save(new AppSettings { FocusClockStyle = "simple" });
+
+        var loaded = Settings.Load();
+
+        Assert.Equal("halo", loaded.FocusClockStyle);
     }
 }
