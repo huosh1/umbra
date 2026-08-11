@@ -9,8 +9,9 @@ namespace Umbra.App;
 internal static class BrowserIntegration
 {
     public const string HostName = "com.umbra.browser_blocker";
-    public const string ExtensionId = "ijgalicomdmmcjecigefpchbdeiadnld";
-    public const string StoreUrl = "https://chromewebstore.google.com/detail/" + ExtensionId;
+    public const string StoreExtensionId = "kihnnccjkhgjagaoljepcpghmfdpicoc";
+    public const string ManualExtensionId = "ijgalicomdmmcjecigefpchbdeiadnld";
+    public const string StoreUrl = "https://chromewebstore.google.com/detail/" + StoreExtensionId;
 
     private static readonly string[] VendorKeys =
     [
@@ -34,7 +35,11 @@ internal static class BrowserIntegration
                 description = "Umbra browser blocking host",
                 path = hostExe,
                 type = "stdio",
-                allowed_origins = new[] { $"chrome-extension://{ExtensionId}/" },
+                allowed_origins = new[]
+                {
+                    $"chrome-extension://{StoreExtensionId}/",
+                    $"chrome-extension://{ManualExtensionId}/",
+                },
             };
             File.WriteAllText(manifestPath, JsonSerializer.Serialize(manifest, Json.Options));
 

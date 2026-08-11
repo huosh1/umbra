@@ -4,6 +4,26 @@ Umbra is a native Windows focus app combining Pomodoro and free-form sessions,
 schedules, application and website blocklists, ambient sounds, Spotify media
 information, statistics, and a detachable always-on-top timer.
 
+<p align="center">
+  <img src="store-assets/promo-marquee-1400x560.png" alt="Umbra" width="100%">
+</p>
+
+## Preview
+
+<p align="center">
+  <a href="store-assets/screenshots/01-blocked-site.png"><img src="store-assets/screenshots/01-blocked-site.png" alt="Umbra blocking a distracting website" width="100%"></a>
+</p>
+
+<p align="center">
+  <a href="store-assets/screenshots/02-blocklists.png"><img src="store-assets/screenshots/02-blocklists.png" alt="Umbra blocklists" width="49%"></a>
+  <a href="store-assets/screenshots/03-statistics.png"><img src="store-assets/screenshots/03-statistics.png" alt="Umbra focus statistics" width="49%"></a>
+</p>
+
+<p align="center">
+  <a href="store-assets/screenshots/04-sounds.png"><img src="store-assets/screenshots/04-sounds.png" alt="Umbra ambient sounds" width="49%"></a>
+  <a href="store-assets/screenshots/05-settings.png"><img src="store-assets/screenshots/05-settings.png" alt="Umbra settings" width="49%"></a>
+</p>
+
 ## Install on Windows
 
 1. Open the [latest release](https://github.com/huosh1/umbra/releases/latest).
@@ -38,8 +58,9 @@ Developer mode in `chrome://extensions`, and choose **Load unpacked**.
 ## Browser support
 
 The native bridge is registered automatically for Chrome, Vivaldi, Microsoft
-Edge, and Brave. The published Chrome Web Store extension ID is fixed to
-`ijgalicomdmmcjecigefpchbdeiadnld`.
+Edge, and Brave. It accepts both the official Chrome Web Store extension
+(`kihnnccjkhgjagaoljepcpghmfdpicoc`) and the manually installed package
+(`ijgalicomdmmcjecigefpchbdeiadnld`).
 
 The extension only sends a matched blocked domain to the local Umbra process.
 It does not send browsing data to an Umbra server. See [PRIVACY.md](PRIVACY.md).

@@ -35,8 +35,26 @@ dotnet publish (Join-Path $root "Umbra.BrowserHost\Umbra.BrowserHost.csproj") `
     -o $publish
 if ($LASTEXITCODE -ne 0) { throw "Browser host publish failed." }
 
-$extensionZip = Join-Path $artifacts "Umbra-Extension-$Version.zip"
+$extensionManifest = Get-Content -Raw -LiteralPath (Join-Path $root "Umbra.App\browser-extension\manifest.json") | ConvertFrom-Json
+$extensionVersion = $extensionManifest.version
+$extensionZip = Join-Path $artifacts "Umbra-Extension-$extensionVersion.zip"
 Compress-Archive -Path (Join-Path $root "Umbra.App\browser-extension\*") -DestinationPath $extensionZip -CompressionLevel Optimal
+
+# Chrome Web Store rejects a developer-defined manifest key. Keep the regular
+# archive for manual/unpacked installs (where the key preserves the extension
+# ID expected by the native host), and create a second Store-only archive with
+# that field removed. Google assigns the definitive Store item ID on upload.
+$storeExtensionDirectory = Join-Path $artifacts "store-extension"
+Copy-Item -LiteralPath (Join-Path $root "Umbra.App\browser-extension") `
+    -Destination $storeExtensionDirectory -Recurse
+$storeManifestPath = Join-Path $storeExtensionDirectory "manifest.json"
+$storeManifest = Get-Content -Raw -LiteralPath $storeManifestPath | ConvertFrom-Json
+$storeManifest.PSObject.Properties.Remove("key")
+$storeManifestJson = $storeManifest | ConvertTo-Json -Depth 20
+[IO.File]::WriteAllText($storeManifestPath, $storeManifestJson, [Text.UTF8Encoding]::new($false))
+$storeExtensionZip = Join-Path $artifacts "Umbra-Extension-Chrome-Web-Store-$extensionVersion.zip"
+Compress-Archive -Path (Join-Path $storeExtensionDirectory "*") `
+    -DestinationPath $storeExtensionZip -CompressionLevel Optimal
 
 $isccCandidates = @(
     "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe",
@@ -53,6 +71,7 @@ if ($LASTEXITCODE -ne 0) { throw "Installer compilation failed." }
 
 $checksums = @(Get-ChildItem $installerOutput -File)
 $checksums += @(Get-Item $extensionZip)
+$checksums += @(Get-Item $storeExtensionZip)
 $checksumPath = Join-Path $artifacts "SHA256SUMS.txt"
 $checksums | ForEach-Object {
     $hash = (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
