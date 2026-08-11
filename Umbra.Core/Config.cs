@@ -31,6 +31,8 @@ public static class Config
     public static string HostsBackup => Path.Combine(DataDir, "hosts.backup");
     public static string LogFile => Path.Combine(DataDir, "watchdog.log");
     public static string WatchdogPidFile => Path.Combine(DataDir, "watchdog.pid");
+    public static string WatchdogStopRequestFile => Path.Combine(DataDir, "watchdog.stop-request");
+    public static string WatchdogStoppedFile => Path.Combine(DataDir, "watchdog.stopped");
     public static string VocabDir => Path.Combine(DataDir, "vocab");
     public static string VocabProgressFile => Path.Combine(DataDir, "vocab_progress.json");
 

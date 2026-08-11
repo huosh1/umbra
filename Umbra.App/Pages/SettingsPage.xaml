@@ -207,6 +207,23 @@
                 <ui:ToggleSwitch x:Name="StartupToggle" Checked="StartupToggle_Changed" Unchecked="StartupToggle_Changed" />
             </ui:CardControl>
 
+            <ui:CardControl Tag="update updates updater version mise a jour installer redemarrer" Margin="0,0,0,6">
+                <ui:CardControl.Icon>
+                    <ui:SymbolIcon Symbol="ArrowDownload24" />
+                </ui:CardControl.Icon>
+                <ui:CardControl.Header>
+                    <StackPanel>
+                        <TextBlock x:Name="UpdateTitleText" />
+                        <TextBlock x:Name="UpdateStatusText" FontSize="12" Opacity="0.6" Margin="0,2,0,0" />
+                    </StackPanel>
+                </ui:CardControl.Header>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <ProgressBar x:Name="UpdateProgressBar" Width="110" Height="4" Margin="0,0,12,0"
+                                 Minimum="0" Maximum="100" Visibility="Collapsed" />
+                    <ui:Button x:Name="UpdateButton" Appearance="Secondary" Click="UpdateButton_Click" />
+                </StackPanel>
+            </ui:CardControl>
+
             <ui:CardControl Margin="0,0,0,6">
                 <ui:CardControl.Icon>
                     <ui:SymbolIcon Symbol="AlertUrgent24" />
