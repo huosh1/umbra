@@ -37,4 +37,30 @@ public class UpdaterTests
     {
         Assert.Equal(expected, Updater.IsTrustedGitHubUrl(url));
     }
+
+    [Fact]
+    public async Task CompletedDownload_ReleasesTemporaryFileBeforePromotion()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "umbra-updater-test-" + Guid.NewGuid());
+        Directory.CreateDirectory(directory);
+        var temporaryPath = Path.Combine(directory, "Umbra-Setup.exe.download");
+        var destinationPath = Path.Combine(directory, "Umbra-Setup.exe");
+        var payload = "verified installer payload"u8.ToArray();
+
+        try
+        {
+            await using var source = new MemoryStream(payload);
+            var hash = await Updater.WriteVerifiedDownloadAsync(source, temporaryPath, payload.Length);
+
+            Assert.Equal(
+                Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(payload)).ToLowerInvariant(),
+                hash);
+            File.Move(temporaryPath, destinationPath);
+            Assert.Equal(payload, await File.ReadAllBytesAsync(destinationPath));
+        }
+        finally
+        {
+            try { Directory.Delete(directory, recursive: true); } catch { }
+        }
+    }
 }

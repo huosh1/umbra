@@ -155,44 +155,20 @@ public static class Updater
             var totalBytes = response.Content.Headers.ContentLength ?? update.InstallerSize;
 
             await using var source = await response.Content.ReadAsStreamAsync(cancellationToken);
-            await using var destination = new FileStream(
+            var actualHash = await WriteVerifiedDownloadAsync(
+                source,
                 temporaryPath,
-                FileMode.CreateNew,
-                FileAccess.Write,
-                FileShare.None,
-                bufferSize: 1024 * 128,
-                options: FileOptions.Asynchronous | FileOptions.SequentialScan);
-            using var sha256 = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
-
-            var buffer = new byte[1024 * 128];
-            long downloadedBytes = 0;
-            var lastReportedPercent = -1;
-            while (true)
-            {
-                var bytesRead = await source.ReadAsync(buffer, cancellationToken);
-                if (bytesRead == 0) break;
-                await destination.WriteAsync(buffer.AsMemory(0, bytesRead), cancellationToken);
-                sha256.AppendData(buffer, 0, bytesRead);
-                downloadedBytes += bytesRead;
-
-                if (totalBytes > 0)
-                {
-                    var percent = (int)Math.Clamp(downloadedBytes * 100 / totalBytes, 0, 100);
-                    if (percent != lastReportedPercent)
-                    {
-                        lastReportedPercent = percent;
-                        progress?.Report(percent / 100d);
-                    }
-                }
-            }
-
-            await destination.FlushAsync(cancellationToken);
-            var actualHash = Convert.ToHexString(sha256.GetHashAndReset()).ToLowerInvariant();
+                totalBytes,
+                progress,
+                cancellationToken);
             if (!CryptographicOperations.FixedTimeEquals(
                     Convert.FromHexString(actualHash),
                     Convert.FromHexString(expectedHash)))
                 throw new CryptographicException("The downloaded installer failed SHA-256 verification.");
 
+            // The helper has disposed its FileShare.None destination before
+            // this rename. Keeping that stream alive makes Move fail on
+            // Windows with a sharing violation.
             File.Move(temporaryPath, destinationPath, overwrite: true);
             progress?.Report(1);
             return destinationPath;
@@ -202,6 +178,48 @@ public static class Updater
             if (File.Exists(temporaryPath)) File.Delete(temporaryPath);
             throw;
         }
+    }
+
+    internal static async Task<string> WriteVerifiedDownloadAsync(
+        Stream source,
+        string temporaryPath,
+        long totalBytes,
+        IProgress<double>? progress = null,
+        CancellationToken cancellationToken = default)
+    {
+        await using var destination = new FileStream(
+            temporaryPath,
+            FileMode.CreateNew,
+            FileAccess.Write,
+            FileShare.None,
+            bufferSize: 1024 * 128,
+            options: FileOptions.Asynchronous | FileOptions.SequentialScan);
+        using var sha256 = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+
+        var buffer = new byte[1024 * 128];
+        long downloadedBytes = 0;
+        var lastReportedPercent = -1;
+        while (true)
+        {
+            var bytesRead = await source.ReadAsync(buffer, cancellationToken);
+            if (bytesRead == 0) break;
+            await destination.WriteAsync(buffer.AsMemory(0, bytesRead), cancellationToken);
+            sha256.AppendData(buffer, 0, bytesRead);
+            downloadedBytes += bytesRead;
+
+            if (totalBytes > 0)
+            {
+                var percent = (int)Math.Clamp(downloadedBytes * 100 / totalBytes, 0, 100);
+                if (percent != lastReportedPercent)
+                {
+                    lastReportedPercent = percent;
+                    progress?.Report(percent / 100d);
+                }
+            }
+        }
+
+        await destination.FlushAsync(cancellationToken);
+        return Convert.ToHexString(sha256.GetHashAndReset()).ToLowerInvariant();
     }
 
     internal static bool TryReadExpectedSha256(string contents, string fileName, out string expectedHash)
