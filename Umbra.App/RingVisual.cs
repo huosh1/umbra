@@ -15,9 +15,13 @@ public static class RingVisual
     public static Grid BuildFocusTimer(double diameter, double fraction, Brush trackBrush, Brush progressBrush,
         string centerValue, Brush textBrush, string style)
     {
-        return string.Equals(style, "orbit", StringComparison.OrdinalIgnoreCase)
-            ? BuildOrbit(diameter, fraction, trackBrush, progressBrush, centerValue, textBrush)
-            : BuildHalo(diameter, fraction, trackBrush, progressBrush, centerValue, textBrush);
+        return style?.ToLowerInvariant() switch
+        {
+            "orbit" => BuildOrbit(diameter, fraction, trackBrush, progressBrush, centerValue, textBrush),
+            "arc" => BuildOpenArc(diameter, fraction, trackBrush, progressBrush, centerValue, textBrush),
+            "digital" => BuildDigital(diameter, fraction, trackBrush, progressBrush, centerValue, textBrush),
+            _ => BuildHalo(diameter, fraction, trackBrush, progressBrush, centerValue, textBrush),
+        };
     }
 
     private static Grid BuildHalo(double diameter, double fraction, Brush trackBrush, Brush progressBrush,
@@ -59,7 +63,7 @@ public static class RingVisual
             grid.Children.Add(dotCanvas);
         }
 
-        grid.Children.Add(BuildTimerCenter(diameter, centerValue, textBrush, progressBrush));
+        grid.Children.Add(BuildTimerCenter(diameter, centerValue, textBrush));
         return grid;
     }
 
@@ -106,11 +110,143 @@ public static class RingVisual
             HorizontalAlignment = HorizontalAlignment.Center,
             VerticalAlignment = VerticalAlignment.Center,
         });
-        grid.Children.Add(BuildTimerCenter(diameter, centerValue, textBrush, progressBrush));
+        grid.Children.Add(BuildTimerCenter(diameter, centerValue, textBrush));
         return grid;
     }
 
-    private static StackPanel BuildTimerCenter(double diameter, string centerValue, Brush textBrush, Brush accentBrush)
+    private static Grid BuildOpenArc(double diameter, double fraction, Brush trackBrush, Brush progressBrush,
+        string centerValue, Brush textBrush)
+    {
+        fraction = Math.Clamp(fraction, 0, 1);
+        const double startAngle = -230;
+        const double sweepAngle = 280;
+        var grid = new Grid { Width = diameter, Height = diameter };
+        var thickness = Math.Max(6, diameter * 0.045);
+
+        grid.Children.Add(BuildSweepArc(diameter, thickness, 1, trackBrush, startAngle, sweepAngle));
+        if (fraction > 0.001)
+        {
+            grid.Children.Add(BuildSweepArc(diameter, thickness, fraction, progressBrush, startAngle, sweepAngle));
+            var radius = diameter / 2 - thickness / 2;
+            var point = PointOnCircle(
+                new Point(diameter / 2, diameter / 2),
+                radius,
+                startAngle + sweepAngle * fraction);
+            var dotSize = thickness * 1.4;
+            var dot = new Ellipse { Width = dotSize, Height = dotSize, Fill = progressBrush };
+            var dotCanvas = new Canvas { Width = diameter, Height = diameter };
+            Canvas.SetLeft(dot, point.X - dotSize / 2);
+            Canvas.SetTop(dot, point.Y - dotSize / 2);
+            dotCanvas.Children.Add(dot);
+            grid.Children.Add(dotCanvas);
+        }
+
+        grid.Children.Add(BuildTimerCenter(diameter, centerValue, textBrush));
+        return grid;
+    }
+
+    private static Grid BuildDigital(double diameter, double fraction, Brush trackBrush, Brush progressBrush,
+        string centerValue, Brush textBrush)
+    {
+        fraction = Math.Clamp(fraction, 0, 1);
+        var grid = new Grid { Width = diameter, Height = diameter };
+        var parts = centerValue.Split(':', 2);
+        var minutes = parts.Length > 0 ? parts[0] : "--";
+        var seconds = parts.Length > 1 ? parts[1] : "--";
+        var panel = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+        panel.Children.Add(BuildDigitalTile(diameter, minutes, fraction, trackBrush, progressBrush, textBrush));
+        panel.Children.Add(new TextBlock
+        {
+            Text = ":",
+            FontSize = diameter * 0.145,
+            FontWeight = FontWeights.SemiBold,
+            Foreground = textBrush,
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(diameter * 0.025, 0, diameter * 0.025, diameter * 0.018),
+        });
+        panel.Children.Add(BuildDigitalTile(diameter, seconds, fraction, trackBrush, progressBrush, textBrush));
+        grid.Children.Add(panel);
+        return grid;
+    }
+
+    private static Grid BuildDigitalTile(double diameter, string value, double fraction, Brush trackBrush,
+        Brush progressBrush, Brush textBrush)
+    {
+        var width = diameter * 0.31;
+        var height = diameter * 0.29;
+        var radius = diameter * 0.045;
+        var tile = new Grid { Width = width, Height = height, ClipToBounds = true };
+        tile.Children.Add(new Border
+        {
+            CornerRadius = new CornerRadius(radius),
+            Background = trackBrush,
+            Opacity = 0.22,
+        });
+        if (fraction > 0.001)
+        {
+            tile.Children.Add(new Border
+            {
+                Height = height * fraction,
+                Background = progressBrush,
+                Opacity = 0.18,
+                VerticalAlignment = VerticalAlignment.Bottom,
+                CornerRadius = new CornerRadius(0, 0, radius, radius),
+            });
+        }
+        tile.Children.Add(new Border
+        {
+            CornerRadius = new CornerRadius(radius),
+            BorderBrush = trackBrush,
+            BorderThickness = new Thickness(Math.Max(1, diameter * 0.006)),
+            Opacity = 0.55,
+        });
+        tile.Children.Add(new TextBlock
+        {
+            Text = value,
+            FontSize = diameter * 0.145,
+            FontWeight = FontWeights.SemiBold,
+            Foreground = textBrush,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+        });
+        return tile;
+    }
+
+    private static UIElement BuildSweepArc(double diameter, double thickness, double fraction, Brush brush,
+        double startAngle, double sweepAngle)
+    {
+        fraction = Math.Clamp(fraction, 0.001, 1);
+        var radius = diameter / 2 - thickness / 2;
+        var center = new Point(diameter / 2, diameter / 2);
+        var startPoint = PointOnCircle(center, radius, startAngle);
+        var actualSweep = sweepAngle * fraction;
+        var endPoint = PointOnCircle(center, radius, startAngle + actualSweep);
+        var figure = new PathFigure { StartPoint = startPoint, IsClosed = false };
+        figure.Segments.Add(new ArcSegment
+        {
+            Point = endPoint,
+            Size = new Size(radius, radius),
+            IsLargeArc = actualSweep > 180,
+            SweepDirection = SweepDirection.Clockwise,
+        });
+        var geometry = new PathGeometry();
+        geometry.Figures.Add(figure);
+        return new Path
+        {
+            Data = geometry,
+            Stroke = brush,
+            StrokeThickness = thickness,
+            StrokeStartLineCap = PenLineCap.Round,
+            StrokeEndLineCap = PenLineCap.Round,
+        };
+    }
+
+    private static StackPanel BuildTimerCenter(double diameter, string centerValue, Brush textBrush)
     {
         var panel = new StackPanel
         {
@@ -123,15 +259,6 @@ public static class RingVisual
             FontSize = diameter * 0.16,
             FontWeight = FontWeights.SemiBold,
             Foreground = textBrush,
-            HorizontalAlignment = HorizontalAlignment.Center,
-        });
-        panel.Children.Add(new Border
-        {
-            Width = diameter * 0.11,
-            Height = Math.Max(2, diameter * 0.012),
-            CornerRadius = new CornerRadius(diameter),
-            Background = accentBrush,
-            Margin = new Thickness(0, diameter * 0.035, 0, 0),
             HorizontalAlignment = HorizontalAlignment.Center,
         });
         return panel;

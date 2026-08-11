@@ -29,6 +29,8 @@ public class SettingsTests : IDisposable
     [Theory]
     [InlineData("halo")]
     [InlineData("orbit")]
+    [InlineData("arc")]
+    [InlineData("digital")]
     public void FocusClockStyle_RoundTrips(string style)
     {
         Settings.Save(new AppSettings { FocusClockStyle = style });

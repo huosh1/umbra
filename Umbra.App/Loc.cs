@@ -169,6 +169,8 @@ public static class Loc
         ["settings.clock.desc"] = ("Choisis l'horloge utilisée dans Focus et dans le minuteur flottant", "Choose the clock used in Focus and the floating timer"),
         ["settings.clock.halo"] = ("Halo", "Halo"),
         ["settings.clock.orbit"] = ("Orbite", "Orbit"),
+        ["settings.clock.arc"] = ("Arc", "Arc"),
+        ["settings.clock.digital"] = ("Numérique", "Digital"),
         ["settings.sound.session.title"] = ("Son de fin de session", "End of session sound"),
         ["settings.sound.session.desc"] = ("Joue une alarme quand une période de focus se termine", "Play an alarm when focus period ends"),
         ["settings.sound.break.title"] = ("Son de fin de pause", "End of break sound"),

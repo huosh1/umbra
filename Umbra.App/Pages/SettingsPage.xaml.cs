@@ -249,6 +249,8 @@ public partial class SettingsPage : UserControl
         ClockStylePanel.Children.Clear();
         ClockStylePanel.Children.Add(CreateClockStyleButton("halo", Loc.T("settings.clock.halo")));
         ClockStylePanel.Children.Add(CreateClockStyleButton("orbit", Loc.T("settings.clock.orbit")));
+        ClockStylePanel.Children.Add(CreateClockStyleButton("arc", Loc.T("settings.clock.arc")));
+        ClockStylePanel.Children.Add(CreateClockStyleButton("digital", Loc.T("settings.clock.digital")));
     }
 
     private Wpf.Ui.Controls.Button CreateClockStyleButton(string style, string label)

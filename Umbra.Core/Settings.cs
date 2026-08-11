@@ -11,7 +11,7 @@ public class AppSettings
     public string Language { get; set; } = "fr"; // "fr" | "en"
     public string Theme { get; set; } = "Dark"; // "Dark" | "Light"
     public List<int> DurationPresets { get; set; } = new() { 25, 60, 180 }; // minutes
-    public string FocusClockStyle { get; set; } = "halo"; // halo | orbit
+    public string FocusClockStyle { get; set; } = "halo"; // halo | orbit | arc | digital
     public bool PlayEndOfSessionSound { get; set; } = true;
     public bool PlayEndOfBreakSound { get; set; } = true;
     public bool ShowSpotifyTile { get; set; } = true;
