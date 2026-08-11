@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using Umbra.Core;
 
 namespace Umbra.App;
@@ -45,36 +46,85 @@ internal static class WatchdogSupervisor
 
     public static async Task<bool> StopForUpdateAsync(CancellationToken cancellationToken = default)
     {
-        if (!IsAlive())
+        if (IsAlive())
+        {
+            DeleteSignalFile(Config.WatchdogStoppedFile);
+            try
+            {
+                File.WriteAllText(Config.WatchdogStopRequestFile, DateTime.UtcNow.ToString("O"));
+            }
+            catch
+            {
+                return false;
+            }
+
+            var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(10);
+            var stoppedCooperatively = false;
+            while (DateTime.UtcNow < deadline)
+            {
+                if (File.Exists(Config.WatchdogStoppedFile))
+                {
+                    DeleteSignalFile(Config.WatchdogStoppedFile);
+                    stoppedCooperatively = true;
+                    break;
+                }
+                await Task.Delay(200, cancellationToken);
+            }
+
+            DeleteSignalFile(Config.WatchdogStopRequestFile);
+            if (!stoppedCooperatively && IsAlive()) return false;
+        }
+        else
         {
             DeleteSignalFile(Config.WatchdogStopRequestFile);
             DeleteSignalFile(Config.WatchdogStoppedFile);
-            return true;
         }
 
-        DeleteSignalFile(Config.WatchdogStoppedFile);
+        // Le suivi ci-dessus ne repose que sur le heartbeat de watchdog.pid : un
+        // process Umbra.exe planté/orphelin (heartbeat mort mais process encore
+        // vivant côté OS, notamment un ancien watchdog élevé jamais nettoyé) lui
+        // échappe totalement. Restart Manager de l'installeur ne peut pas fermer
+        // de force un process de plus haute intégrité depuis un contexte non-élevé
+        // - mieux vaut échouer ici, visiblement, que laisser l'installeur silencieux
+        // (/SUPPRESSMSGBOXES) ignorer le blocage et ne rien installer du tout.
+        return !HasOtherUmbraProcesses();
+    }
+
+    private static bool HasOtherUmbraProcesses()
+    {
+        var currentId = Environment.ProcessId;
+        var others = Process.GetProcessesByName("Umbra");
         try
         {
-            File.WriteAllText(Config.WatchdogStopRequestFile, DateTime.UtcNow.ToString("O"));
-        }
-        catch
-        {
-            return false;
-        }
-
-        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(10);
-        while (DateTime.UtcNow < deadline)
-        {
-            if (File.Exists(Config.WatchdogStoppedFile))
+            foreach (var other in others)
             {
-                DeleteSignalFile(Config.WatchdogStoppedFile);
-                return true;
+                if (other.Id == currentId) continue;
+                try
+                {
+                    other.Kill();
+                    other.WaitForExit(2000);
+                }
+                catch
+                {
+                    // Accès refusé (process élevé) ou déjà sorti entre-temps - dans
+                    // le premier cas le process survit, détecté au recomptage.
+                }
             }
-            await Task.Delay(200, cancellationToken);
+        }
+        finally
+        {
+            foreach (var other in others) other.Dispose();
         }
 
-        DeleteSignalFile(Config.WatchdogStopRequestFile);
-        return !IsAlive();
+        var recheck = Process.GetProcessesByName("Umbra");
+        try
+        {
+            return recheck.Any(p => p.Id != currentId);
+        }
+        finally
+        {
+            foreach (var p in recheck) p.Dispose();
+        }
     }
 
     private static void DeleteSignalFile(string path)

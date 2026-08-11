@@ -78,6 +78,8 @@ public partial class App : Application
         _trayIcon.MenuOpening += RefreshTrayMenu;
         RefreshTrayMenu();
 
+        VerifyPendingUpdate();
+
         _reminderTimer = new DispatcherTimer { Interval = TimeSpan.FromMinutes(1) };
         _reminderTimer.Tick += (_, _) => CheckSmartReminder();
         _reminderTimer.Start();
@@ -255,6 +257,16 @@ public partial class App : Application
 
             SetUpdateStatus(new UpdateUiStatus(UpdatePhase.Installing, InstalledVersion, update.LatestVersion, 1));
 
+            try
+            {
+                File.WriteAllText(Config.PendingUpdateVersionFile, update.LatestVersion);
+            }
+            catch
+            {
+                // Non bloquant : au pire la vérification post-update au prochain
+                // démarrage ne se déclenche pas, comme avant ce correctif.
+            }
+
             var installer = Process.Start(new ProcessStartInfo
             {
                 FileName = installerPath,
@@ -308,6 +320,36 @@ public partial class App : Application
             MessageBox.Show(_dashboard, message, Loc.T("update.available.title"), MessageBoxButton.OK, image);
         else
             MessageBox.Show(message, Loc.T("update.available.title"), MessageBoxButton.OK, image);
+    }
+
+    // Consomme le marqueur laissé par CheckForUpdatesAsync juste avant de
+    // lancer l'installateur silencieux. S'il est toujours là au démarrage
+    // suivant et que la version installée n'a pas bougé, l'installateur a
+    // "réussi" sans rien remplacer (cas vécu : process Umbra.exe élevé
+    // orphelin bloquant Restart Manager, /SUPPRESSMSGBOXES masquant tout).
+    private void VerifyPendingUpdate()
+    {
+        if (!File.Exists(Config.PendingUpdateVersionFile)) return;
+
+        string expected;
+        try
+        {
+            expected = File.ReadAllText(Config.PendingUpdateVersionFile).Trim();
+        }
+        catch
+        {
+            return;
+        }
+        finally
+        {
+            try { File.Delete(Config.PendingUpdateVersionFile); } catch { }
+        }
+
+        if (string.IsNullOrWhiteSpace(expected)) return;
+        if (Updater.CompareVersions(InstalledVersion, expected) >= 0) return;
+
+        SetUpdateStatus(new UpdateUiStatus(UpdatePhase.Failed, InstalledVersion, expected));
+        _trayIcon?.ShowNotification(Loc.T("update.available.title"), Loc.T("update.install.incomplete"));
     }
 
     private static string GetInstalledVersion()

@@ -34,6 +34,12 @@ public static class Config
     public static string WatchdogStopRequestFile => Path.Combine(DataDir, "watchdog.stop-request");
     public static string WatchdogStoppedFile => Path.Combine(DataDir, "watchdog.stopped");
     public static string BrowserHostStopRequestFile => Path.Combine(DataDir, "browser-host.stop-request");
+    // Version attendue écrite juste avant de lancer l'installateur silencieux
+    // (voir App.xaml.cs:CheckForUpdatesAsync) - lue et effacée au démarrage
+    // suivant pour détecter un installateur qui s'est terminé "avec succès"
+    // sans réellement remplacer les fichiers (process bloquant non fermé,
+    // /SUPPRESSMSGBOXES masquant l'échec).
+    public static string PendingUpdateVersionFile => Path.Combine(DataDir, "pending-update-version.txt");
     public static string LogsDir => Path.Combine(DataDir, "logs");
     public static string VocabDir => Path.Combine(DataDir, "vocab");
     public static string VocabProgressFile => Path.Combine(DataDir, "vocab_progress.json");

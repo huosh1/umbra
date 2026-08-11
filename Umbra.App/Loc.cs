@@ -173,6 +173,7 @@ public static class Loc
         ["update.current"] = ("Umbra est déjà à jour.", "Umbra is already up to date."),
         ["update.check.failed"] = ("Impossible de vérifier les mises à jour. Vérifie ta connexion Internet et réessaie.", "Unable to check for updates. Check your Internet connection and try again."),
         ["update.install.failed"] = ("La mise à jour n'a pas pu être téléchargée ou vérifiée. Aucun fichier n'a été installé.", "The update could not be downloaded or verified. No files were installed."),
+        ["update.install.incomplete"] = ("La mise à jour a été lancée mais ne s'est pas appliquée, probablement à cause d'un processus Umbra bloqué. Ferme tout processus Umbra restant puis réessaie, ou installe manuellement depuis la page de téléchargement.", "The update ran but didn't apply, likely because a stuck Umbra process blocked it. Close any remaining Umbra process and try again, or install manually from the download page."),
         ["update.activity.active"] = ("Termine la session ou la plage de focus active avant d'installer la mise à jour.", "Finish the active focus session or schedule before installing the update."),
 
         ["settings.section.focus_sessions"] = ("Sessions de focus", "Focus sessions"),

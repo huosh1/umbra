@@ -103,6 +103,19 @@ begin
     end;
   end;
   Sleep(1000);
+
+  { Filet de sécurité : CloseApplications/Restart Manager ne peut pas fermer
+    de force un process resté ouvert avec des droits supérieurs à ceux de cet
+    installateur (PrivilegesRequired=lowest). Un Umbra.exe non-élevé qui traîne
+    encore, lui, se ferme normalement ici - sans ça la copie de fichiers peut
+    échouer silencieusement (/SUPPRESSMSGBOXES) sans qu'aucune erreur ne soit
+    visible pour l'utilisateur. Best-effort : ignore l'échec si le process est
+    élevé, le contournement réel se fait côté app (WatchdogSupervisor). }
+  Exec(ExpandConstant('{sys}\taskkill.exe'), '/IM Umbra.exe /F', '', SW_HIDE,
+    ewWaitUntilTerminated, Attempt);
+  Exec(ExpandConstant('{sys}\taskkill.exe'), '/IM Umbra.BrowserHost.exe /F', '', SW_HIDE,
+    ewWaitUntilTerminated, Attempt);
+
   Result := '';
 end;
 
