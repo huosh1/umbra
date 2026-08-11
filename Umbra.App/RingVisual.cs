@@ -181,7 +181,13 @@ public static class RingVisual
         var width = diameter * 0.31;
         var height = diameter * 0.29;
         var radius = diameter * 0.045;
-        var tile = new Grid { Width = width, Height = height, ClipToBounds = true };
+        var tile = new Grid
+        {
+            Width = width,
+            Height = height,
+            ClipToBounds = true,
+            Clip = new RectangleGeometry(new Rect(0, 0, width, height), radius, radius),
+        };
         tile.Children.Add(new Border
         {
             CornerRadius = new CornerRadius(radius),
