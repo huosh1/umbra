@@ -4,10 +4,6 @@ Umbra is a native Windows focus app combining Pomodoro and free-form sessions,
 schedules, application and website blocklists, ambient sounds, Spotify media
 information, statistics, and a detachable always-on-top timer.
 
-<p align="center">
-  <img src="store-assets/promo-marquee-1400x560.png" alt="Umbra" width="100%">
-</p>
-
 ## Preview
 
 <p align="center">
