@@ -28,6 +28,7 @@ internal sealed class TrayIcon : IDisposable
     private const uint TPM_RETURNCMD = 0x0100;
     private const uint TPM_NONOTIFY = 0x0080;
     private const uint MF_STRING = 0x0;
+    private const uint MF_GRAYED = 0x1;
     private const uint MF_SEPARATOR = 0x800;
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
@@ -116,6 +117,7 @@ internal sealed class TrayIcon : IDisposable
     }
 
     public event Action? DoubleClicked;
+    public event Action? MenuOpening;
 
     public void SetMenu(IEnumerable<(string Label, Action? OnClick)> items)
     {
@@ -164,14 +166,15 @@ internal sealed class TrayIcon : IDisposable
 
     private void ShowMenu()
     {
+        MenuOpening?.Invoke();
         if (_menuItems.Count == 0) return;
         var hMenu = CreatePopupMenu();
         try
         {
-            foreach (var (id, label, _) in _menuItems)
+            foreach (var (id, label, onClick) in _menuItems)
             {
                 if (label == "-") AppendMenuW(hMenu, MF_SEPARATOR, 0, null);
-                else AppendMenuW(hMenu, MF_STRING, id, label);
+                else AppendMenuW(hMenu, MF_STRING | (onClick is null ? MF_GRAYED : 0), id, label);
             }
 
             GetCursorPos(out var pt);

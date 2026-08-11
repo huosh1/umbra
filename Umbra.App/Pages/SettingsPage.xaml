@@ -237,6 +237,19 @@
                 </StackPanel>
             </ui:CardControl>
 
+            <ui:CardControl Tag="logs crash diagnostic journaux erreur support" Margin="0,0,0,6">
+                <ui:CardControl.Icon>
+                    <ui:SymbolIcon Symbol="Open24" />
+                </ui:CardControl.Icon>
+                <ui:CardControl.Header>
+                    <StackPanel>
+                        <TextBlock x:Name="DiagnosticLogsTitleText" />
+                        <TextBlock x:Name="DiagnosticLogsDescText" FontSize="12" Opacity="0.6" Margin="0,2,0,0" />
+                    </StackPanel>
+                </ui:CardControl.Header>
+                <ui:Button x:Name="DiagnosticLogsButton" Appearance="Secondary" Click="DiagnosticLogsButton_Click" />
+            </ui:CardControl>
+
             <ui:CardControl Margin="0,0,0,6">
                 <ui:CardControl.Icon>
                     <ui:SymbolIcon Symbol="AlertUrgent24" />

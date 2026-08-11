@@ -70,6 +70,21 @@ begin
   Result := CompareText(ExpandConstant('{param:UPDATE|0}'), '1') = 0;
 end;
 
+function PrepareToInstall(var NeedsRestart: Boolean): String;
+var
+  DataDirectory: String;
+begin
+  { New BrowserHost versions observe this marker and close their own pipe.
+    The Restart Manager configured above remains the compatibility path for
+    1.0.3, whose host predates the cooperative shutdown protocol. }
+  DataDirectory := ExpandConstant('{userappdata}\UmbraNative\data');
+  ForceDirectories(DataDirectory);
+  SaveStringToFile(DataDirectory + '\browser-host.stop-request',
+    GetDateTimeString('yyyy-mm-dd hh:nn:ss', '-', ':'), False);
+  Sleep(1000);
+  Result := '';
+end;
+
 function JsonEscape(Value: String): String;
 begin
   StringChangeEx(Value, '\', '\\', True);
@@ -92,10 +107,24 @@ begin
   SaveStringToFile(ManifestPath, Manifest, False);
 end;
 
+procedure ClearBrowserHostStopRequest;
+begin
+  DeleteFile(ExpandConstant('{userappdata}\UmbraNative\data\browser-host.stop-request'));
+end;
+
 procedure CurStepChanged(CurStep: TSetupStep);
 begin
   if CurStep = ssPostInstall then
+  begin
+    ClearBrowserHostStopRequest;
     WriteNativeHostManifest;
+  end;
+end;
+
+procedure DeinitializeSetup;
+begin
+  { Never leave browser integration paused after a cancelled or failed setup. }
+  ClearBrowserHostStopRequest;
 end;
 
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);

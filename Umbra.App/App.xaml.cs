@@ -24,6 +24,7 @@ public partial class App : Application
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+        RegisterCrashHandlers();
 
         if (e.Args.Contains("--watchdog"))
         {
@@ -74,15 +75,8 @@ public partial class App : Application
 
         _trayIcon = new TrayIcon(_dashboard, "Umbra");
         _trayIcon.DoubleClicked += ShowDashboard;
-        _trayIcon.SetMenu(new (string, Action?)[]
-        {
-            ("Ouvrir Umbra", ShowDashboard),
-            ("-", null),
-            ("Session rapide (25 min)", () => QuickStart(25)),
-            ("Session rapide (60 min)", () => QuickStart(60)),
-            ("-", null),
-            ("Quitter", QuitReally),
-        });
+        _trayIcon.MenuOpening += RefreshTrayMenu;
+        RefreshTrayMenu();
 
         _reminderTimer = new DispatcherTimer { Interval = TimeSpan.FromMinutes(1) };
         _reminderTimer.Tick += (_, _) => CheckSmartReminder();
@@ -122,6 +116,67 @@ public partial class App : Application
         ShowDashboard();
     }
 
+    private void RefreshTrayMenu()
+    {
+        if (_trayIcon is null) return;
+        var items = new List<(string, Action?)>
+        {
+            (Loc.T("tray.open"), ShowDashboard),
+            ("-", null),
+        };
+
+        var session = Session.Load();
+        var activeSchedule = session.Active
+            ? null
+            : Periods.GetActivePeriods(Periods.Load(), DateTime.Now).FirstOrDefault();
+        if (session.Active)
+        {
+            var title = session.Kind == "pomodoro" && session.Pomodoro is { } pomodoro
+                ? Loc.T(pomodoro.Phase == "break" ? "tray.pomodoro.break" : "tray.pomodoro.focus")
+                : string.IsNullOrWhiteSpace(session.QuestName) ? Loc.T("tray.free") : session.QuestName;
+            items.Add((string.Format(Loc.T("tray.status"), title, FormatTrayDuration(Session.RemainingSeconds(session))), null));
+            items.Add((Loc.T("tray.floating"), FloatingFocusWindow.ShowOrActivate));
+            items.Add(Session.CanStop(session)
+                ? (Loc.T("tray.stop"), StopCurrentSessionFromTray)
+                : (Loc.T("tray.stop.locked"), null));
+            items.Add(("-", null));
+        }
+        else if (activeSchedule is not null)
+        {
+            var remaining = TimeSpan.FromMinutes(Periods.MinutesUntilEnd(activeSchedule, DateTime.Now));
+            var title = string.Format(Loc.T("tray.schedule"), activeSchedule.Name);
+            items.Add((string.Format(Loc.T("tray.status"), title, FormatTrayDuration(remaining.TotalSeconds)), null));
+            items.Add((Loc.T("tray.floating"), FloatingFocusWindow.ShowOrActivate));
+            items.Add(("-", null));
+        }
+        else
+        {
+            items.Add((string.Format(Loc.T("focus.quick"), 25), () => QuickStart(25)));
+            items.Add((string.Format(Loc.T("focus.quick"), 60), () => QuickStart(60)));
+            items.Add(("-", null));
+        }
+
+        items.Add((Loc.T("tray.quit"), QuitReally));
+        _trayIcon.SetMenu(items);
+    }
+
+    private void StopCurrentSessionFromTray()
+    {
+        var session = Session.Load();
+        if (!session.Active || !Session.CanStop(session)) return;
+        Session.Stop(session);
+        RefreshTrayMenu();
+    }
+
+    private static string FormatTrayDuration(double seconds)
+    {
+        var rounded = Math.Max(0, (int)Math.Ceiling(seconds));
+        var duration = TimeSpan.FromSeconds(rounded);
+        return duration.TotalHours >= 1
+            ? $"{(int)duration.TotalHours}:{duration.Minutes:00}:{duration.Seconds:00}"
+            : $"{duration.Minutes:00}:{duration.Seconds:00}";
+    }
+
     private void QuitReally()
     {
         _reallyQuitting = true;
@@ -135,6 +190,7 @@ public partial class App : Application
     {
         if (!await _updateGate.WaitAsync(0)) return;
         var watchdogStoppedForUpdate = false;
+        var browserHostsStoppedForUpdate = false;
         try
         {
             SetUpdateStatus(new UpdateUiStatus(UpdatePhase.Checking, InstalledVersion));
@@ -193,6 +249,9 @@ public partial class App : Application
             watchdogStoppedForUpdate = await WatchdogSupervisor.StopForUpdateAsync();
             if (!watchdogStoppedForUpdate)
                 throw new InvalidOperationException("The Umbra watchdog did not stop for the update.");
+            browserHostsStoppedForUpdate = await BrowserIntegration.StopNativeHostsForUpdateAsync();
+            if (!browserHostsStoppedForUpdate)
+                throw new InvalidOperationException("The Umbra browser host did not stop for the update.");
 
             SetUpdateStatus(new UpdateUiStatus(UpdatePhase.Installing, InstalledVersion, update.LatestVersion, 1));
 
@@ -206,8 +265,11 @@ public partial class App : Application
             if (installer is null) throw new InvalidOperationException("Unable to start the Umbra installer.");
             QuitReally();
         }
-        catch (Exception)
+        catch (Exception error)
         {
+            CrashReporter.Write(error, "update", InstalledVersion);
+            if (browserHostsStoppedForUpdate)
+                BrowserIntegration.ResumeNativeHostsAfterFailedUpdate();
             if (watchdogStoppedForUpdate && (Session.Load().Active || Periods.HasEnabledPeriod(Periods.Load())))
                 WatchdogSupervisor.Ensure();
             SetUpdateStatus(new UpdateUiStatus(UpdatePhase.Failed, InstalledVersion));
@@ -257,8 +319,23 @@ public partial class App : Application
 
     private static bool IsFocusActivityActive()
     {
-        if (Session.Load().Active) return true;
-        return Periods.GetActivePeriods(Periods.Load(), DateTime.Now).Count > 0;
+        return UpdateReadiness.Evaluate(Session.Load(), Periods.Load(), DateTime.Now) != UpdateBlockReason.None;
+    }
+
+    private void RegisterCrashHandlers()
+    {
+        DispatcherUnhandledException += (_, args) =>
+            CrashReporter.Write(args.Exception, "dispatcher", InstalledVersion);
+        AppDomain.CurrentDomain.UnhandledException += (_, args) =>
+            CrashReporter.Write(
+                args.ExceptionObject as Exception ?? new Exception(args.ExceptionObject?.ToString() ?? "Unknown fatal error"),
+                "app-domain",
+                InstalledVersion);
+        TaskScheduler.UnobservedTaskException += (_, args) =>
+        {
+            CrashReporter.Write(args.Exception, "unobserved-task", InstalledVersion);
+            args.SetObserved();
+        };
     }
 
     protected override void OnExit(ExitEventArgs e)
