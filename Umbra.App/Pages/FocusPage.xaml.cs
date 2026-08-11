@@ -12,6 +12,7 @@ public partial class FocusPage : System.Windows.Controls.UserControl
     private readonly DispatcherTimer _timer;
     private bool _loaded;
     private List<SavedBlocklist> _savedBlocklists = new();
+    private readonly string _clockStyle;
 
     // Suivi des transitions pour déclencher les sons de fin de session/pause
     // (Réglages) - même logique de garde que WatchdogLoop.Enforcer côté
@@ -47,6 +48,7 @@ public partial class FocusPage : System.Windows.Controls.UserControl
         BuildBlocklistCombo();
 
         var settings = Settings.Load();
+        _clockStyle = settings.FocusClockStyle;
         FocusSlider.Value = settings.DurationPresets.Count > 0 ? settings.DurationPresets[0] : 25;
         RestSlider.Value = 5;
         RepeatsSlider.Value = 2;
@@ -151,9 +153,9 @@ public partial class FocusPage : System.Windows.Controls.UserControl
             StopButton.IsEnabled = canStop;
             var totalSeconds = Math.Max(1, (s.EndTs - s.StartTs) / 1000d);
             ActiveRingHost.Children.Clear();
-            ActiveRingHost.Children.Add(RingVisual.BuildMinimal(245, Session.RemainingSeconds(s) / totalSeconds,
+            ActiveRingHost.Children.Add(RingVisual.BuildFocusTimer(245, Session.RemainingSeconds(s) / totalSeconds,
                 (System.Windows.Media.Brush)FindResource("ControlStrokeColorDefaultBrush"),
-                (System.Windows.Media.Brush)FindResource("AccentFillColorDefaultBrush"), SessionTimeText.Text, "", Foreground));
+                (System.Windows.Media.Brush)FindResource("AccentFillColorDefaultBrush"), SessionTimeText.Text, Foreground, _clockStyle));
         }
         else
         {

@@ -11,6 +11,7 @@ public class AppSettings
     public string Language { get; set; } = "fr"; // "fr" | "en"
     public string Theme { get; set; } = "Dark"; // "Dark" | "Light"
     public List<int> DurationPresets { get; set; } = new() { 25, 60, 180 }; // minutes
+    public string FocusClockStyle { get; set; } = "halo"; // halo | orbit | arc | digital
     public bool PlayEndOfSessionSound { get; set; } = true;
     public bool PlayEndOfBreakSound { get; set; } = true;
     public bool ShowSpotifyTile { get; set; } = true;
@@ -36,7 +37,10 @@ public static class Settings
         try
         {
             var json = File.ReadAllText(Config.SettingsFile);
-            return JsonSerializer.Deserialize<AppSettings>(json, Json.Options) ?? DefaultSettings();
+            var settings = JsonSerializer.Deserialize<AppSettings>(json, Json.Options) ?? DefaultSettings();
+            if (settings.FocusClockStyle is not ("halo" or "orbit" or "arc" or "digital"))
+                settings.FocusClockStyle = "halo";
+            return settings;
         }
         catch
         {

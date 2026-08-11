@@ -25,4 +25,28 @@ public class SettingsTests : IDisposable
         Assert.Equal("manual", loaded.SmartReminderMode);
         Assert.Equal("14:30", loaded.SmartReminderTime);
     }
+
+    [Theory]
+    [InlineData("halo")]
+    [InlineData("orbit")]
+    [InlineData("arc")]
+    [InlineData("digital")]
+    public void FocusClockStyle_RoundTrips(string style)
+    {
+        Settings.Save(new AppSettings { FocusClockStyle = style });
+
+        var loaded = Settings.Load();
+
+        Assert.Equal(style, loaded.FocusClockStyle);
+    }
+
+    [Fact]
+    public void RemovedFocusClockStyle_FallsBackToHalo()
+    {
+        Settings.Save(new AppSettings { FocusClockStyle = "simple" });
+
+        var loaded = Settings.Load();
+
+        Assert.Equal("halo", loaded.FocusClockStyle);
+    }
 }

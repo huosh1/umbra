@@ -29,6 +29,8 @@ public partial class SettingsPage : UserControl
         FocusSessionsHeaderText.Text = Loc.T("settings.section.focus_sessions");
         PeriodsTitleText.Text = Loc.T("settings.periods.title");
         PeriodsDescText.Text = Loc.T("settings.periods.desc");
+        ClockStyleTitleText.Text = Loc.T("settings.clock.title");
+        ClockStyleDescText.Text = Loc.T("settings.clock.desc");
         AddPresetButton.Content = Loc.T("settings.presets.add");
         SoundSessionTitleText.Text = Loc.T("settings.sound.session.title");
         SoundSessionDescText.Text = Loc.T("settings.sound.session.desc");
@@ -70,6 +72,9 @@ public partial class SettingsPage : UserControl
         BackgroundBlurLabelText.Text = Loc.T("settings.background.blur");
         StartupLabelText.Text = Loc.T("settings.startup.label");
         UpdateTitleText.Text = Loc.T("settings.update.title");
+        DiagnosticLogsTitleText.Text = Loc.T("settings.logs.title");
+        DiagnosticLogsDescText.Text = Loc.T("settings.logs.desc");
+        DiagnosticLogsButton.Content = Loc.T("settings.logs.open");
         NotificationsTitleText.Text = Loc.T("settings.notifications.title");
         NotificationsDescText.Text = Loc.T("settings.notifications.desc");
         NotificationsLinkButton.ToolTip = Loc.T("settings.notifications.link");
@@ -94,6 +99,7 @@ public partial class SettingsPage : UserControl
         BackgroundBlurSlider.Value = _settings.BackgroundBlur;
         BackgroundModeBox.SelectedIndex = _settings.BackgroundAppearanceMode switch { "content" => 1, "navigation" => 2, _ => 0 };
         RenderPresets();
+        RenderClockStyles();
         RenderBackgroundStatus();
         RefreshStartupStatus();
         RefreshUpdateStatus();
@@ -241,6 +247,58 @@ public partial class SettingsPage : UserControl
 
     private const int MaxRecentBackgrounds = 6;
 
+    private void RenderClockStyles()
+    {
+        ClockStylePanel.Children.Clear();
+        ClockStylePanel.Children.Add(CreateClockStyleButton("halo", Loc.T("settings.clock.halo")));
+        ClockStylePanel.Children.Add(CreateClockStyleButton("orbit", Loc.T("settings.clock.orbit")));
+        ClockStylePanel.Children.Add(CreateClockStyleButton("arc", Loc.T("settings.clock.arc")));
+        ClockStylePanel.Children.Add(CreateClockStyleButton("digital", Loc.T("settings.clock.digital")));
+    }
+
+    private Wpf.Ui.Controls.Button CreateClockStyleButton(string style, string label)
+    {
+        var selected = string.Equals(_settings.FocusClockStyle, style, StringComparison.OrdinalIgnoreCase);
+        var accent = (Brush)FindResource("AccentFillColorDefaultBrush");
+        var track = (Brush)FindResource("ControlStrokeColorDefaultBrush");
+        var text = (Brush)FindResource("TextFillColorPrimaryBrush");
+
+        var content = new StackPanel { HorizontalAlignment = HorizontalAlignment.Center };
+        content.Children.Add(RingVisual.BuildFocusTimer(108, 0.68, track, accent, "18:42", text, style));
+        content.Children.Add(new TextBlock
+        {
+            Text = label,
+            FontWeight = FontWeights.SemiBold,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            Margin = new Thickness(0, 7, 0, 0),
+            Foreground = text,
+        });
+
+        var button = new Wpf.Ui.Controls.Button
+        {
+            Tag = style,
+            Content = content,
+            Width = 190,
+            Height = 154,
+            Padding = new Thickness(12, 8, 12, 8),
+            Margin = new Thickness(0, 0, 10, 8),
+            Appearance = Wpf.Ui.Controls.ControlAppearance.Secondary,
+            BorderBrush = selected ? accent : track,
+            BorderThickness = selected ? new Thickness(2) : new Thickness(1),
+            ToolTip = label,
+        };
+        button.Click += ClockStyleButton_Click;
+        return button;
+    }
+
+    private void ClockStyleButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement { Tag: string style }) return;
+        _settings.FocusClockStyle = style;
+        Settings.Save(_settings);
+        RenderClockStyles();
+    }
+
     private void RenderBackgroundStatus()
     {
         BackgroundCurrentText.Text = string.IsNullOrWhiteSpace(_settings.BackgroundImagePath)
@@ -253,10 +311,20 @@ public partial class SettingsPage : UserControl
     private void RenderDefaultBackgrounds()
     {
         DefaultBackgroundsList.Items.Clear();
-        foreach (var fileName in new[] { "water.png", "sand.png", "rosyhill.png", "gradient.png", "blisslike.png" })
+        var presetFolder = System.IO.Path.Combine(AppContext.BaseDirectory, "Assets", "Backgrounds");
+        if (!Directory.Exists(presetFolder)) return;
+
+        var preferredOrder = new[] { "water.png", "sand.png", "rosyhill.png", "gradient.png", "blisslike.png" };
+        foreach (var path in Directory.EnumerateFiles(presetFolder)
+                     .Where(IsSupportedStaticBackground)
+                     .OrderBy(path =>
+                     {
+                         var index = Array.FindIndex(preferredOrder,
+                             name => string.Equals(name, System.IO.Path.GetFileName(path), StringComparison.OrdinalIgnoreCase));
+                         return index < 0 ? int.MaxValue : index;
+                     })
+                     .ThenBy(System.IO.Path.GetFileName, StringComparer.CurrentCultureIgnoreCase))
         {
-            var path = System.IO.Path.Combine(AppContext.BaseDirectory, "Assets", "Backgrounds", fileName);
-            if (!System.IO.File.Exists(path)) continue;
             DefaultBackgroundsList.Items.Add(CreateBackgroundThumbnail(path));
         }
     }
@@ -380,10 +448,24 @@ public partial class SettingsPage : UserControl
             ? Loc.T("settings.background.none")
             : string.Format(Loc.T("settings.background.current"), System.IO.Path.GetFileName(_settings.FloatingFocusBackgroundPath));
         FloatingFocusPresetsList.Items.Clear();
-        var presetFolder = System.IO.Path.Combine(AppContext.BaseDirectory, "Assets", "FloatingBackgrounds");
-        if (Directory.Exists(presetFolder))
-            foreach (var path in Directory.EnumerateFiles(presetFolder).Where(IsSupportedFloatingBackground))
-                FloatingFocusPresetsList.Items.Add(CreateFloatingBackgroundPreview(path));
+        var presetFolders = new[]
+        {
+            System.IO.Path.Combine(AppContext.BaseDirectory, "Assets", "FloatingBackgrounds"),
+            System.IO.Path.Combine(AppContext.BaseDirectory, "Assets", "Backgrounds"),
+        };
+        var shownFileNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var path in presetFolders
+                     .Where(Directory.Exists)
+                     .SelectMany(Directory.EnumerateFiles)
+                     .Where(IsSupportedFloatingBackground)
+                     .OrderBy(System.IO.Path.GetFileName, StringComparer.CurrentCultureIgnoreCase))
+        {
+            // The five original PNG presets exist in both folders. Show them
+            // once, while sharing every additional static background with the
+            // floating timer without duplicating the asset in the installer.
+            if (!shownFileNames.Add(System.IO.Path.GetFileName(path))) continue;
+            FloatingFocusPresetsList.Items.Add(CreateFloatingBackgroundPreview(path));
+        }
         FloatingFocusRecentList.Items.Clear();
         foreach (var path in _settings.RecentFloatingFocusBackgrounds.Where(File.Exists))
             FloatingFocusRecentList.Items.Add(CreateFloatingBackgroundPreview(path));
@@ -393,6 +475,9 @@ public partial class SettingsPage : UserControl
 
     private static bool IsSupportedFloatingBackground(string path) =>
         new[] { ".png", ".jpg", ".jpeg", ".bmp", ".mp4" }.Contains(System.IO.Path.GetExtension(path), StringComparer.OrdinalIgnoreCase);
+
+    private static bool IsSupportedStaticBackground(string path) =>
+        new[] { ".png", ".jpg", ".jpeg", ".bmp" }.Contains(System.IO.Path.GetExtension(path), StringComparer.OrdinalIgnoreCase);
 
     private Border CreateFloatingBackgroundPreview(string path)
     {
@@ -584,6 +669,23 @@ public partial class SettingsPage : UserControl
         catch
         {
             // Windows Settings indisponible/désactivé sur cette machine : pas bloquant
+        }
+    }
+
+    private void DiagnosticLogsButton_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            CrashReporter.EnsureLogDirectory();
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = CrashReporter.LogDirectory,
+                UseShellExecute = true,
+            });
+        }
+        catch (Exception error)
+        {
+            CrashReporter.Write(error, "open-diagnostic-logs");
         }
     }
 

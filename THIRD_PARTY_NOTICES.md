@@ -50,3 +50,10 @@ Ed Paulino Photography, Oxana Lyashenko, Priscilla Du Preez, Jeremy Allouche,
 Michał Mancewicz, Angus Gray, Aditya Chinchure, Pierre Bamin, and Mila Young.
 They are redistributed subject to the
 [Unsplash License](https://unsplash.com/license).
+
+## Additional background presets
+
+The additional JPG background presets are supplied by the Umbra publisher
+under separate redistribution rights. Their inclusion in an Umbra installer
+does not grant downstream users ownership of, or a separate license to,
+redistribute the original image files outside Umbra.

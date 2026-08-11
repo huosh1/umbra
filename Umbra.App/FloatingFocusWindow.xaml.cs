@@ -14,6 +14,7 @@ public partial class FloatingFocusWindow : Wpf.Ui.Controls.FluentWindow
 {
     private static FloatingFocusWindow? _instance;
     private readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromSeconds(1) };
+    private readonly string _clockStyle;
 
     public static void ShowOrActivate()
     {
@@ -25,6 +26,7 @@ public partial class FloatingFocusWindow : Wpf.Ui.Controls.FluentWindow
     private FloatingFocusWindow()
     {
         InitializeComponent();
+        _clockStyle = Settings.Load().FocusClockStyle;
         ApplyBackground();
         _timer.Tick += async (_, _) => { RefreshSession(); await RefreshSpotify(); };
         _timer.Start();
@@ -86,8 +88,9 @@ public partial class FloatingFocusWindow : Wpf.Ui.Controls.FluentWindow
 
         var ringSize = Math.Clamp(Math.Min(ActualWidth - 90, ActualHeight - 160), 155, 285);
         RingHost.Children.Clear();
-        RingHost.Children.Add(RingVisual.BuildClock(ringSize, seconds > 0 ? seconds / total : 0, new SolidColorBrush(Color.FromArgb(70, 255, 255, 255)), new SolidColorBrush(Color.FromRgb(45, 165, 230)),
-            seconds > 0 ? $"{(int)(seconds / 60):D2}:{(int)(seconds % 60):D2}" : "--:--", "", Brushes.White));
+        RingHost.Children.Add(RingVisual.BuildFocusTimer(ringSize, seconds > 0 ? seconds / total : 0,
+            new SolidColorBrush(Color.FromArgb(70, 255, 255, 255)), new SolidColorBrush(Color.FromRgb(45, 165, 230)),
+            seconds > 0 ? $"{(int)(seconds / 60):D2}:{(int)(seconds % 60):D2}" : "--:--", Brushes.White, _clockStyle));
         PhaseText.Text = title;
         ModeDetailText.Text = detail;
     }

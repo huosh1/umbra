@@ -25,6 +25,19 @@
                 </StackPanel>
             </ui:CardExpander>
 
+            <ui:CardExpander x:Name="ClockStyleExpander" Margin="0,0,0,6">
+                <ui:CardExpander.Icon>
+                    <ui:SymbolIcon Symbol="Clock24" />
+                </ui:CardExpander.Icon>
+                <ui:CardExpander.Header>
+                    <StackPanel>
+                        <TextBlock x:Name="ClockStyleTitleText" />
+                        <TextBlock x:Name="ClockStyleDescText" FontSize="12" Opacity="0.6" Margin="0,2,0,0" />
+                    </StackPanel>
+                </ui:CardExpander.Header>
+                <WrapPanel x:Name="ClockStylePanel" MinWidth="400" />
+            </ui:CardExpander>
+
             <ui:CardExpander Margin="0,0,0,6">
                 <ui:CardExpander.Icon><ui:SymbolIcon Symbol="WindowNew24" /></ui:CardExpander.Icon>
                 <ui:CardExpander.Header>
@@ -222,6 +235,19 @@
                                  Minimum="0" Maximum="100" Visibility="Collapsed" />
                     <ui:Button x:Name="UpdateButton" Appearance="Secondary" Click="UpdateButton_Click" />
                 </StackPanel>
+            </ui:CardControl>
+
+            <ui:CardControl Tag="logs crash diagnostic journaux erreur support" Margin="0,0,0,6">
+                <ui:CardControl.Icon>
+                    <ui:SymbolIcon Symbol="Open24" />
+                </ui:CardControl.Icon>
+                <ui:CardControl.Header>
+                    <StackPanel>
+                        <TextBlock x:Name="DiagnosticLogsTitleText" />
+                        <TextBlock x:Name="DiagnosticLogsDescText" FontSize="12" Opacity="0.6" Margin="0,2,0,0" />
+                    </StackPanel>
+                </ui:CardControl.Header>
+                <ui:Button x:Name="DiagnosticLogsButton" Appearance="Secondary" Click="DiagnosticLogsButton_Click" />
             </ui:CardControl>
 
             <ui:CardControl Margin="0,0,0,6">

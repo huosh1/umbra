@@ -23,6 +23,7 @@ internal static class BrowserIntegration
 
     public static bool RegisterNativeHost()
     {
+        BrowserHostLifecycle.ClearStopRequest();
         var hostExe = FindHostExecutable();
         if (hostExe is null) return false;
 
@@ -62,13 +63,102 @@ internal static class BrowserIntegration
         UseShellExecute = true,
     });
 
+    public static async Task<bool> StopNativeHostsForUpdateAsync(CancellationToken cancellationToken = default)
+    {
+        if (!BrowserHostLifecycle.RequestStop()) return false;
+        try
+        {
+            var gracefulDeadline = DateTime.UtcNow + TimeSpan.FromSeconds(4);
+            while (DateTime.UtcNow < gracefulDeadline)
+            {
+                using var hosts = FindOwnedHostProcesses();
+                if (hosts.Count == 0) return true;
+                await Task.Delay(200, cancellationToken);
+            }
+
+            // Older hosts (notably the one shipped with 1.0.3) do not understand
+            // the cooperative stop marker. Force only processes whose executable
+            // path matches this Umbra installation, then let the installer proceed.
+            using (var hosts = FindOwnedHostProcesses())
+            {
+                foreach (var host in hosts)
+                {
+                    try
+                    {
+                        if (!host.HasExited) host.Kill(entireProcessTree: true);
+                    }
+                    catch
+                    {
+                    }
+                }
+            }
+
+            var forcedDeadline = DateTime.UtcNow + TimeSpan.FromSeconds(3);
+            while (DateTime.UtcNow < forcedDeadline)
+            {
+                using var hosts = FindOwnedHostProcesses();
+                if (hosts.Count == 0) return true;
+                await Task.Delay(150, cancellationToken);
+            }
+
+            BrowserHostLifecycle.ClearStopRequest();
+            return false;
+        }
+        catch
+        {
+            BrowserHostLifecycle.ClearStopRequest();
+            throw;
+        }
+    }
+
+    public static void ResumeNativeHostsAfterFailedUpdate()
+    {
+        BrowserHostLifecycle.ClearStopRequest();
+        RegisterNativeHost();
+    }
+
     private static string? FindHostExecutable()
     {
-        var candidates = new[]
+        return HostExecutableCandidates().FirstOrDefault(File.Exists);
+    }
+
+    private static string[] HostExecutableCandidates() =>
+    [
+        Path.Combine(AppContext.BaseDirectory, "browser-host", "Umbra.BrowserHost.exe"),
+        Path.Combine(AppContext.BaseDirectory, "Umbra.BrowserHost.exe"),
+    ];
+
+    private static ProcessCollection FindOwnedHostProcesses()
+    {
+        var expectedPaths = HostExecutableCandidates()
+            .Select(Path.GetFullPath)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var owned = new List<Process>();
+        foreach (var process in Process.GetProcessesByName("Umbra.BrowserHost"))
         {
-            Path.Combine(AppContext.BaseDirectory, "browser-host", "Umbra.BrowserHost.exe"),
-            Path.Combine(AppContext.BaseDirectory, "Umbra.BrowserHost.exe"),
-        };
-        return candidates.FirstOrDefault(File.Exists);
+            try
+            {
+                var path = process.MainModule?.FileName;
+                if (path is not null && expectedPaths.Contains(Path.GetFullPath(path)))
+                    owned.Add(process);
+                else
+                    process.Dispose();
+            }
+            catch
+            {
+                process.Dispose();
+            }
+        }
+        return new ProcessCollection(owned);
+    }
+
+    private sealed class ProcessCollection(List<Process> processes) : IDisposable
+    {
+        public int Count => processes.Count;
+        public IEnumerator<Process> GetEnumerator() => processes.GetEnumerator();
+        public void Dispose()
+        {
+            foreach (var process in processes) process.Dispose();
+        }
     }
 }
