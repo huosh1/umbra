@@ -4,8 +4,11 @@ using System.Text;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Media.Animation;
 using System.Windows.Media.Effects;
 using System.Windows.Media.Imaging;
+using System.Windows.Threading;
 using Umbra.App.Pages;
 using Umbra.Core;
 using Wpf.Ui.Controls;
@@ -15,6 +18,7 @@ namespace Umbra.App;
 public partial class MainWindow : FluentWindow
 {
     private string _activeTag = "focus";
+    private bool _navIndicatorReady;
     private static readonly Dictionary<string, string> SearchIndex = new()
     {
         ["focus"] = "focus session sessions pomodoro pomodoro libre free schedule schedules planning minuteur timer hard mode blocklist tâche task",
@@ -42,7 +46,16 @@ public partial class MainWindow : FluentWindow
         // ReplaceContent a besoin que le template du contrôle (Frame interne)
         // soit déjà appliqué - l'appeler depuis le constructeur (avant que la
         // fenêtre soit chargée) lève une NullReferenceException.
-        Loaded += (_, _) => RootNavigation.ReplaceContent(PadPage(new FocusPage()), null);
+        Loaded += (_, _) =>
+        {
+            RootNavigation.ReplaceContent(PadPage(new FocusPage()), null);
+            QueueNavIndicatorMove(FocusNavItem, animate: false);
+        };
+        SizeChanged += (_, _) =>
+        {
+            if (GetNavigationItem(_activeTag) is { } item)
+                QueueNavIndicatorMove(item, animate: false);
+        };
     }
 
     // Image de fond personnalisée (Réglages > Background image) - floutée et
@@ -150,6 +163,52 @@ public partial class MainWindow : FluentWindow
         };
         if (page is SettingsPage settingsPage && !string.IsNullOrWhiteSpace(searchQuery)) settingsPage.ApplySearch(searchQuery);
         RootNavigation.ReplaceContent(PadPage(page), null);
+
+        if (GetNavigationItem(tag) is { } activeItem)
+            QueueNavIndicatorMove(activeItem, animate: _navIndicatorReady);
+    }
+
+    private NavigationViewItem? GetNavigationItem(string tag) => tag switch
+    {
+        "focus" => FocusNavItem,
+        "blocklist" => BlocklistNavItem,
+        "stats" => StatsNavItem,
+        "sounds" => SoundsNavItem,
+        "settings" => SettingsNavItem,
+        _ => null,
+    };
+
+    private void QueueNavIndicatorMove(FrameworkElement target, bool animate)
+    {
+        Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(() =>
+        {
+            if (!target.IsVisible || target.ActualHeight <= 0) return;
+
+            var position = target.TransformToAncestor(this).Transform(new Point(0, 0));
+            var targetY = position.Y + ((target.ActualHeight - AnimatedNavIndicator.Height) / 2);
+
+            if (!animate)
+            {
+                NavIndicatorTransform.BeginAnimation(TranslateTransform.YProperty, null);
+                NavIndicatorTransform.Y = targetY;
+            }
+            else
+            {
+                var animation = new DoubleAnimation
+                {
+                    From = NavIndicatorTransform.Y,
+                    To = targetY,
+                    Duration = TimeSpan.FromMilliseconds(220),
+                    EasingFunction = new CubicEase { EasingMode = EasingMode.EaseInOut },
+                    FillBehavior = FillBehavior.Stop,
+                };
+                animation.Completed += (_, _) => NavIndicatorTransform.Y = targetY;
+                NavIndicatorTransform.BeginAnimation(TranslateTransform.YProperty, animation);
+            }
+
+            AnimatedNavIndicator.Opacity = 1;
+            _navIndicatorReady = true;
+        }));
     }
 
     // Filtre les items de la barre latérale par libellé (langue courante) au
