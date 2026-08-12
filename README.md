@@ -129,6 +129,16 @@ or the navigation pane only. Each layout works with the light and dark themes.
   <a href="docs/screenshots/statistics-sand-sidebar.png"><img src="docs/screenshots/statistics-sand-sidebar.png" alt="Background sidebar with a solid workspace" width="32%"></a>
 </p>
 
+### Focus session and floating timer
+
+An active session mixing ambient sounds, and the detachable floating timer with
+a custom background.
+
+<p align="center">
+  <a href="docs/screenshots/focus-session-active.png"><img src="docs/screenshots/focus-session-active.png" alt="An active focus session with ambient sounds playing" width="49%"></a>
+  <a href="docs/screenshots/floating-timer-mt-fuji.png"><img src="docs/screenshots/floating-timer-mt-fuji.png" alt="The floating focus timer with a custom background" width="49%"></a>
+</p>
+
 ### Blocklists, sounds and settings
 
 <p align="center">
