@@ -124,7 +124,6 @@ The custom background can cover the entire window, the main workspace only,
 or the navigation pane only. Each layout works with the light and dark themes.
 
 <p align="center">
-  <a href="docs/screenshots/statistics-dark-water.png"><img src="docs/screenshots/statistics-dark-water.png" alt="Full-window background layout" width="32%"></a>
   <a href="docs/screenshots/statistics-rosy-solid-sidebar.png"><img src="docs/screenshots/statistics-rosy-solid-sidebar.png" alt="Main background with a solid sidebar" width="32%"></a>
   <a href="docs/screenshots/statistics-sand-sidebar.png"><img src="docs/screenshots/statistics-sand-sidebar.png" alt="Background sidebar with a solid workspace" width="32%"></a>
 </p>
@@ -134,13 +133,9 @@ or the navigation pane only. Each layout works with the light and dark themes.
 An active session mixing ambient sounds, and the detachable floating timer with
 a custom video background.
 
-<p align="center">
-  <img src="docs/screenshots/floating-timer-demo.gif" alt="The floating focus timer with a video background, showing an active schedule" width="70%">
-</p>
 
 <p align="center">
-  <a href="docs/screenshots/focus-session-active.png"><img src="docs/screenshots/focus-session-active.png" alt="An active focus session with ambient sounds playing" width="49%"></a>
-  <a href="docs/screenshots/floating-timer-mt-fuji.png"><img src="docs/screenshots/floating-timer-mt-fuji.png" alt="The floating focus timer with a custom background" width="49%"></a>
+  <img src="docs/screenshots/floating-timer-demo.gif" alt="The floating focus timer with a video background, showing an active schedule" width="44%">
 </p>
 
 ### Blocklists, sounds and settings
