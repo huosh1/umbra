@@ -132,7 +132,11 @@ or the navigation pane only. Each layout works with the light and dark themes.
 ### Focus session and floating timer
 
 An active session mixing ambient sounds, and the detachable floating timer with
-a custom background.
+a custom video background.
+
+<p align="center">
+  <img src="docs/screenshots/floating-timer-demo.gif" alt="The floating focus timer with a video background, showing an active schedule" width="70%">
+</p>
 
 <p align="center">
   <a href="docs/screenshots/focus-session-active.png"><img src="docs/screenshots/focus-session-active.png" alt="An active focus session with ambient sounds playing" width="49%"></a>
