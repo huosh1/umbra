@@ -23,7 +23,6 @@ internal sealed class TrayIcon : IDisposable
     private const int NIF_MESSAGE = 0x1;
     private const int NIF_ICON = 0x2;
     private const int NIF_TIP = 0x4;
-    private const int NIF_INFO = 0x10;
 
     private const uint TPM_RETURNCMD = 0x0100;
     private const uint TPM_NONOTIFY = 0x0080;
@@ -128,22 +127,6 @@ internal sealed class TrayIcon : IDisposable
             _menuItems.Add((id, label, onClick));
             id++;
         }
-    }
-
-    public void ShowNotification(string title, string message)
-    {
-        var data = new NOTIFYICONDATA
-        {
-            cbSize = Marshal.SizeOf<NOTIFYICONDATA>(),
-            hWnd = _hwnd,
-            uID = 1,
-            uFlags = NIF_INFO,
-            szInfoTitle = title,
-            szInfo = message,
-            dwInfoFlags = 1,
-            uVersionOrTimeout = 8000,
-        };
-        Shell_NotifyIconW(1 /* NIM_MODIFY */, ref data);
     }
 
     private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)

@@ -50,6 +50,12 @@
 
   <ItemGroup>
     <PackageReference Include="WPF-UI" Version="4.3.0" />
+    <!-- Shell_NotifyIcon (P/Invoke direct, TrayIcon.cs) balloons n'ont pas
+         d'identité d'app Windows (AUMID) : elles n'apparaissent jamais dans
+         Réglages > Notifications, et Windows peut les faire disparaître sans
+         prévenir. Ce paquet gère l'enregistrement AUMID + COM sans avoir à
+         packager l'app en MSIX, pour de vraies notifications toast natives. -->
+    <PackageReference Include="Microsoft.Toolkit.Uwp.Notifications" Version="7.1.3" />
   </ItemGroup>
 
 </Project>

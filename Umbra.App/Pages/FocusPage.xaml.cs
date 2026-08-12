@@ -1,4 +1,3 @@
-using System.Media;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -184,8 +183,14 @@ public partial class FocusPage : System.Windows.Controls.UserControl
             var breakEnded = _lastActive && _lastKind == "pomodoro" && _lastPhase == "break" && curPhase == "work";
 
             var settings = Settings.Load();
-            if (focusPeriodEnded && settings.PlayEndOfSessionSound) SystemSounds.Exclamation.Play();
-            if (breakEnded && settings.PlayEndOfBreakSound) SystemSounds.Asterisk.Play();
+            // Une vraie notification toast (AppNotifications) joue son propre
+            // son, propre et unique - remplace l'ancien SystemSounds.Play()
+            // brut qui pouvait se chevaucher/grésiller et qui, de toute façon,
+            // n'affichait jamais rien de visible pour l'utilisateur.
+            if (focusPeriodEnded && settings.PlayEndOfSessionSound)
+                AppNotifications.Show(Loc.T("notify.session.ended.title"), Loc.T("notify.session.ended.body"));
+            if (breakEnded && settings.PlayEndOfBreakSound)
+                AppNotifications.Show(Loc.T("notify.break.ended.title"), Loc.T("notify.break.ended.body"));
         }
 
         _soundStateInitialized = true;

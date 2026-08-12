@@ -49,6 +49,8 @@ public partial class App : Application
             return;
         }
 
+        AppNotifications.Initialize();
+
         // Applique le thème enregistré (Dark par défaut) - voir AppTheme.cs
         // pour pourquoi ça ne peut pas se limiter à ApplicationThemeManager.
         AppTheme.Apply(Settings.Load().Theme);
@@ -215,14 +217,14 @@ public partial class App : Application
             if (IsFocusActivityActive())
             {
                 if (userInitiated) ShowUpdateMessage(Loc.T("update.activity.active"), MessageBoxImage.Information);
-                else _trayIcon?.ShowNotification(Loc.T("update.available.title"),
+                else AppNotifications.Show(Loc.T("update.available.title"),
                     string.Format(Loc.T("update.available.notification"), update.LatestVersion));
                 return;
             }
 
             if (!userInitiated && (_dashboard is null || !_dashboard.IsVisible))
             {
-                _trayIcon?.ShowNotification(Loc.T("update.available.title"),
+                AppNotifications.Show(Loc.T("update.available.title"),
                     string.Format(Loc.T("update.available.notification"), update.LatestVersion));
                 return;
             }
@@ -349,7 +351,7 @@ public partial class App : Application
         if (Updater.CompareVersions(InstalledVersion, expected) >= 0) return;
 
         SetUpdateStatus(new UpdateUiStatus(UpdatePhase.Failed, InstalledVersion, expected));
-        _trayIcon?.ShowNotification(Loc.T("update.available.title"), Loc.T("update.install.incomplete"));
+        AppNotifications.Show(Loc.T("update.available.title"), Loc.T("update.install.incomplete"));
     }
 
     private static string GetInstalledVersion()
@@ -409,7 +411,7 @@ public partial class App : Application
         var elapsed = now.TimeOfDay - target;
         if (elapsed.TotalMinutes is < 0 or > 5 || _lastReminderDate == now.Date) return;
         _lastReminderDate = now.Date;
-        _trayIcon.ShowNotification(Loc.T("reminder.notification.title"), Loc.T("reminder.notification.body"));
+        AppNotifications.Show(Loc.T("reminder.notification.title"), Loc.T("reminder.notification.body"));
     }
 
     // Notifications toast natives à brancher plus tard - pour l'instant on
