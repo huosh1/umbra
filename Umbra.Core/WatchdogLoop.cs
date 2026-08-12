@@ -62,6 +62,17 @@ public static class WatchdogLoop
         private string? _lastKind;
         private string? _lastPhase;
 
+        // Suivi de la fenêtre de blocage actuelle liée à une/des plage(s)
+        // horaire(s), pour remonter ce temps dans l'historique/les stats -
+        // avant ce suivi, le temps passé sous blocage par planning n'était
+        // jamais compté nulle part (seules Session.Stop et la fin de
+        // pomodoro appelaient History.Append). En mémoire seulement, comme
+        // le reste de l'état de transition ci-dessus : un redémarrage du
+        // watchdog en plein milieu d'une plage perd le temps déjà écoulé sur
+        // cette fenêtre, même compromis accepté que pour les notifications.
+        private DateTime? _periodWindowStartUtc;
+        private string? _periodWindowLabel;
+
         private readonly Action<string> _notify; // "done" | "break" | "work"
 
         public Enforcer(Action<string> notify)
@@ -97,6 +108,8 @@ public static class WatchdogLoop
             var activePeriods = Periods.GetActivePeriods(periodsData, DateTime.Now);
             var sessionBlocking = Session.IsBlockingActive(s);
             var shouldBlock = sessionBlocking || activePeriods.Count > 0;
+
+            TrackPeriodHistory(s, activePeriods);
 
             if (shouldBlock)
             {
@@ -205,6 +218,32 @@ public static class WatchdogLoop
             _lastActive = s.Active;
             _lastKind = s.Kind;
             _lastPhase = curPhase;
+        }
+
+        // Une session manuelle a sa propre fenêtre (Session.Stop / fin de
+        // pomodoro), donc on ne suit une fenêtre de plage que quand aucune
+        // session n'est active du tout - sinon le même temps se
+        // compterait deux fois (une fois via la session, une fois via la
+        // plage) si les deux se chevauchent.
+        private void TrackPeriodHistory(SessionState s, List<Period> activePeriods)
+        {
+            var tracking = !s.Active && activePeriods.Count > 0;
+
+            if (tracking && _periodWindowStartUtc is null)
+            {
+                _periodWindowStartUtc = DateTime.UtcNow;
+                _periodWindowLabel = string.Join(", ", activePeriods.Select(p => p.Name));
+            }
+            else if (!tracking && _periodWindowStartUtc is not null)
+            {
+                var minutes = (DateTime.UtcNow - _periodWindowStartUtc.Value).TotalMinutes;
+                if (minutes >= 0.5)
+                {
+                    History.Append("schedule", false, _periodWindowLabel!, minutes);
+                }
+                _periodWindowStartUtc = null;
+                _periodWindowLabel = null;
+            }
         }
     }
 

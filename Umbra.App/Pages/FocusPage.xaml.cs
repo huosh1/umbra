@@ -93,8 +93,16 @@ public partial class FocusPage : System.Windows.Controls.UserControl
     private void FocusModeTabs_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (StartButton is null || FocusModeTabs is null) return;
-        StartButton.Visibility = FocusModeTabs.SelectedItem == SchedulesTab ? Visibility.Collapsed : Visibility.Visible;
-        HardModePanel.Visibility = FocusModeTabs.SelectedItem == SchedulesTab ? Visibility.Collapsed : Visibility.Visible;
+        var isSchedules = FocusModeTabs.SelectedItem == SchedulesTab;
+        StartButton.Visibility = isSchedules ? Visibility.Collapsed : Visibility.Visible;
+        HardModePanel.Visibility = isSchedules ? Visibility.Collapsed : Visibility.Visible;
+        // Pomodoro/Free tiennent dans les 286px d'origine (juste des
+        // sliders) - Schedules a le formulaire "nouvelle plage" + la liste
+        // existante, nettement plus haut. Fixer cette ligne grandissait le
+        // contenu de l'onglet Schedules dans une boîte trop petite, forçant
+        // un scroll interne alors que la page elle-même (ScrollViewer
+        // englobant tout FocusPage) a largement la place de grandir.
+        TabsRow.Height = isSchedules ? GridLength.Auto : new GridLength(286);
     }
 
     // Aperçu "si je démarre maintenant" affiché tant qu'aucune session n'est
@@ -138,9 +146,14 @@ public partial class FocusPage : System.Windows.Controls.UserControl
     {
         var s = Session.Load(); // fait aussi avancer les phases pomodoro dues, termine une session custom expirée côté watchdog
         var active = s.Active;
+        // Une plage horaire active sans session manuelle en cours doit avoir
+        // le même affichage (anneau, statut) que la fenêtre flottante - voir
+        // FloatingFocusWindow.RefreshSession, qui gérait déjà ce cas alors
+        // que cet onglet retombait sur l'écran de configuration.
+        var activePeriod = active ? null : Periods.GetActivePeriods(Periods.Load(), DateTime.Now).FirstOrDefault();
 
-        ActivePanel.Visibility = active ? Visibility.Visible : Visibility.Collapsed;
-        ConfigPanel.Visibility = active ? Visibility.Collapsed : Visibility.Visible;
+        ActivePanel.Visibility = active || activePeriod is not null ? Visibility.Visible : Visibility.Collapsed;
+        ConfigPanel.Visibility = active || activePeriod is not null ? Visibility.Collapsed : Visibility.Visible;
 
         if (active)
         {
@@ -150,9 +163,22 @@ public partial class FocusPage : System.Windows.Controls.UserControl
             var canStop = Session.CanStop(s);
             StopButton.Content = canStop ? Loc.T("focus.stop") : Loc.T("focus.locked");
             StopButton.IsEnabled = canStop;
+            StopButton.Visibility = Visibility.Visible;
             var totalSeconds = Math.Max(1, (s.EndTs - s.StartTs) / 1000d);
             ActiveRingHost.Children.Clear();
             ActiveRingHost.Children.Add(RingVisual.BuildFocusTimer(245, Session.RemainingSeconds(s) / totalSeconds,
+                (System.Windows.Media.Brush)FindResource("ControlStrokeColorDefaultBrush"),
+                (System.Windows.Media.Brush)FindResource("AccentFillColorDefaultBrush"), SessionTimeText.Text, Foreground, _clockStyle));
+        }
+        else if (activePeriod is not null)
+        {
+            var (remainingSeconds, totalSeconds) = Periods.GetTiming(activePeriod, DateTime.Now);
+            var remaining = TimeSpan.FromSeconds(remainingSeconds);
+            SessionStatusText.Text = string.Format(Loc.T("focus.status.schedule"), activePeriod.Name);
+            SessionTimeText.Text = $"{(int)remaining.TotalMinutes:D2}:{remaining.Seconds:D2}";
+            StopButton.Visibility = Visibility.Collapsed; // rien à arrêter depuis ici : c'est le planning qui pilote
+            ActiveRingHost.Children.Clear();
+            ActiveRingHost.Children.Add(RingVisual.BuildFocusTimer(245, remainingSeconds / totalSeconds,
                 (System.Windows.Media.Brush)FindResource("ControlStrokeColorDefaultBrush"),
                 (System.Windows.Media.Brush)FindResource("AccentFillColorDefaultBrush"), SessionTimeText.Text, Foreground, _clockStyle));
         }

@@ -80,7 +80,7 @@ public partial class FloatingFocusWindow : Wpf.Ui.Controls.FluentWindow
             var period = Periods.GetActivePeriods(Periods.Load(), DateTime.Now).FirstOrDefault();
             if (period is not null)
             {
-                (seconds, total) = GetScheduleTiming(period, DateTime.Now);
+                (seconds, total) = Periods.GetTiming(period, DateTime.Now);
                 title = string.Format(Loc.T("floating.schedule"), period.Name);
                 detail = string.Format(Loc.T("floating.ends"), period.EndTime);
             }
@@ -93,18 +93,6 @@ public partial class FloatingFocusWindow : Wpf.Ui.Controls.FluentWindow
             seconds > 0 ? $"{(int)(seconds / 60):D2}:{(int)(seconds % 60):D2}" : "--:--", Brushes.White, _clockStyle));
         PhaseText.Text = title;
         ModeDetailText.Text = detail;
-    }
-
-    private static (double Remaining, double Total) GetScheduleTiming(Period period, DateTime now)
-    {
-        if (!TimeSpan.TryParse(period.StartTime, out var startTime) || !TimeSpan.TryParse(period.EndTime, out var endTime)) return (0, 1);
-        var start = now.Date + startTime;
-        var end = now.Date + endTime;
-        if (end <= start)
-        {
-            if (now < end) start = start.AddDays(-1); else end = end.AddDays(1);
-        }
-        return (Math.Max(0, (end - now).TotalSeconds), Math.Max(1, (end - start).TotalSeconds));
     }
 
     private async Task RefreshSpotify()

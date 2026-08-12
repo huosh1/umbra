@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
+using System.Windows.Threading;
 using Umbra.Core;
 using Wpf.Ui.Controls;
 using TextBlock = System.Windows.Controls.TextBlock;
@@ -17,6 +18,7 @@ public partial class PeriodsPage : UserControl
     private readonly HashSet<int> _selectedDays = new();
     private readonly List<ToggleButton> _dayButtons = new();
     private List<SavedBlocklist> _savedBlocklists = new();
+    private readonly DispatcherTimer _refreshTimer;
 
     public PeriodsPage()
     {
@@ -28,11 +30,22 @@ public partial class PeriodsPage : UserControl
         EndLabel.Text = Loc.T("periods.end");
         DaysLabel.Text = Loc.T("periods.days");
         BlocklistLabel.Text = Loc.T("periods.blocklist.label");
+        HardModeLabel.Text = Loc.T("periods.hardmode");
+        HardModeDescText.Text = Loc.T("periods.hardmode.desc");
         AddPeriodButton.Content = Loc.T("periods.add");
 
         BuildDayButtons();
         BuildBlocklistCombo();
         Render();
+
+        // Une plage peut entrer/sortir de sa fenêtre active pendant que cet
+        // onglet reste ouvert (le TabControl parent ne recrée pas cette page
+        // en changeant d'onglet) - sans ça, le verrou hard mode resterait
+        // figé à l'état observé au chargement de la page.
+        _refreshTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
+        _refreshTimer.Tick += (_, _) => Render();
+        _refreshTimer.Start();
+        Unloaded += (_, _) => _refreshTimer.Stop();
     }
 
     // "Aucune" (index 0) laisse la plage sans apps/sites propres (comme
@@ -78,10 +91,17 @@ public partial class PeriodsPage : UserControl
 
     private CardControl BuildRow(Period p)
     {
+        // Le mode hard d'une session manuelle serait contournable en
+        // désactivant/supprimant simplement la plage qui bloque à la place -
+        // le verrou ne s'applique donc que pendant que CETTE plage bloque
+        // activement (PeriodCoversNow), jamais en dehors de sa fenêtre.
+        var locked = p.HardMode && Periods.PeriodCoversNow(p, DateTime.Now);
+
         var enabledBox = new CheckBox
         {
             Content = p.Name,
             IsChecked = p.Enabled,
+            IsEnabled = !locked,
             VerticalAlignment = VerticalAlignment.Center,
         };
         enabledBox.Checked += (_, _) => { p.Enabled = true; Periods.Save(_data); };
@@ -100,7 +120,12 @@ public partial class PeriodsPage : UserControl
             Margin = new Thickness(10, 0, 0, 0),
         };
 
-        var removeBtn = new Wpf.Ui.Controls.Button { Content = Loc.T("periods.remove"), Appearance = ControlAppearance.Danger };
+        var removeBtn = new Wpf.Ui.Controls.Button
+        {
+            Content = locked ? Loc.T("focus.locked") : Loc.T("periods.remove"),
+            Appearance = ControlAppearance.Danger,
+            IsEnabled = !locked,
+        };
         removeBtn.Click += (_, _) =>
         {
             _data.Periods.Remove(p);
@@ -109,6 +134,7 @@ public partial class PeriodsPage : UserControl
         };
 
         var left = new StackPanel { Orientation = Orientation.Horizontal };
+        if (p.HardMode) left.Children.Add(new SymbolIcon { Symbol = SymbolRegular.LockClosed24, Margin = new Thickness(0, 0, 6, 0), Opacity = 0.7, VerticalAlignment = VerticalAlignment.Center });
         left.Children.Add(enabledBox);
         left.Children.Add(detail);
 
@@ -129,6 +155,7 @@ public partial class PeriodsPage : UserControl
             Days = _selectedDays.ToList(),
             StartTime = string.IsNullOrWhiteSpace(StartBox.Text) ? "00:00" : StartBox.Text.Trim(),
             EndTime = string.IsNullOrWhiteSpace(EndBox.Text) ? "00:00" : EndBox.Text.Trim(),
+            HardMode = HardModeToggle.IsChecked == true,
         };
         if (BlocklistCombo.SelectedIndex > 0)
         {
@@ -142,6 +169,7 @@ public partial class PeriodsPage : UserControl
         foreach (var b in _dayButtons) b.IsChecked = false;
         _selectedDays.Clear();
         BlocklistCombo.SelectedIndex = 0;
+        HardModeToggle.IsChecked = false;
         Render();
     }
 }

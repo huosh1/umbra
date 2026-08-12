@@ -29,7 +29,7 @@
                 </StackPanel>
 
                 <Grid x:Name="ConfigPanel" Margin="24,48,24,24">
-                    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="286"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition x:Name="TabsRow" Height="286"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
                     <Grid Grid.Row="0" Margin="0,0,0,12">
                         <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="12"/><ColumnDefinition/></Grid.ColumnDefinitions>
                         <ui:TextBox x:Name="QuestNameBox" Grid.Column="0"/>
@@ -65,7 +65,15 @@
                             </StackPanel>
                         </TabItem>
 
-                        <TabItem x:Name="SchedulesTab"><ScrollViewer VerticalScrollBarVisibility="Auto"><pages:PeriodsPage Margin="10,14,10,10"/></ScrollViewer></TabItem>
+                        <!-- Pas de ScrollViewer ici (contrairement à avant) :
+                             PeriodsPage a déjà son propre scroll interne pour
+                             juste la liste des plages (MaxHeight="300"), et
+                             cette ligne de la grille grandit maintenant avec
+                             le contenu (voir TabsRow/FocusModeTabs_SelectionChanged)
+                             - un double scroll imbriqué dans une boîte figée
+                             à 286px forçait à scroller alors qu'il y avait de
+                             la place disponible plus bas dans la page. -->
+                        <TabItem x:Name="SchedulesTab"><pages:PeriodsPage Margin="10,14,10,10"/></TabItem>
                     </TabControl>
 
                     <DockPanel Grid.Row="2" x:Name="HardModePanel" Margin="0,0,0,14" LastChildFill="False">

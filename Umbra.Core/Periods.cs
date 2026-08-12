@@ -15,6 +15,12 @@ public class Period
     public string EndTime { get; set; } = "00:00";
     public List<string> Apps { get; set; } = new();
     public List<string> Sites { get; set; } = new();
+    // Comme Session.HardMode, mais pour une plage : empêche de la
+    // désactiver ou de la supprimer tant qu'elle est activement en train de
+    // bloquer (PeriodCoversNow=true) - sinon le mode hard d'une session
+    // manuelle est contournable en désactivant simplement la plage à la
+    // place. Ne restreint rien en dehors de sa fenêtre horaire active.
+    public bool HardMode { get; set; }
 }
 
 public class PeriodsData
@@ -111,4 +117,22 @@ public static class Periods
 
     public static bool HasEnabledPeriod(PeriodsData data) =>
         data.Periods.Any(p => p.Enabled);
+
+    // Temps restant/total d'une plage actuellement active, pour alimenter le
+    // même anneau de progression que les sessions manuelles (Focus et
+    // fenêtre flottante) - gère la traversée de minuit comme
+    // PeriodCoversNow. Ne suppose pas que la plage est active : appelant
+    // responsable de l'avoir vérifié via PeriodCoversNow au préalable.
+    public static (double RemainingSeconds, double TotalSeconds) GetTiming(Period period, DateTime now)
+    {
+        if (!TimeSpan.TryParse(period.StartTime, out var startTime) || !TimeSpan.TryParse(period.EndTime, out var endTime))
+            return (0, 1);
+        var start = now.Date + startTime;
+        var end = now.Date + endTime;
+        if (end <= start)
+        {
+            if (now < end) start = start.AddDays(-1); else end = end.AddDays(1);
+        }
+        return (Math.Max(0, (end - now).TotalSeconds), Math.Max(1, (end - start).TotalSeconds));
+    }
 }

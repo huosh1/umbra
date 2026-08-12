@@ -62,6 +62,7 @@ public static class Loc
         ["focus.status.none"] = ("Aucune session en cours", "No session running"),
         ["focus.status.active"] = ("Session en cours", "Session in progress"),
         ["focus.status.active.hard"] = ("Session en cours (hard mode)", "Session in progress (hard mode)"),
+        ["focus.status.schedule"] = ("Planning actif · {0}", "Active schedule · {0}"),
         ["focus.watchdog.active"] = ("Protection : active", "Protection: active"),
         ["focus.watchdog.inactive"] = ("Protection : watchdog non détecté", "Protection: watchdog not detected"),
         ["focus.periods.header"] = ("Plages horaires", "Schedules"),
@@ -90,6 +91,8 @@ public static class Loc
         ["periods.remove"] = ("Supprimer", "Remove"),
         ["periods.blocklist.label"] = ("Liste de blocage (optionnel)", "Block list (optional)"),
         ["periods.blocklist.none"] = ("Aucune", "None"),
+        ["periods.hardmode"] = ("Hard mode", "Hard mode"),
+        ["periods.hardmode.desc"] = ("Impossible de désactiver ou supprimer la plage tant qu'elle bloque activement", "Can't disable or delete the schedule while it's actively blocking"),
 
         ["blocklist.apps"] = ("Applications", "Applications"),
         ["blocklist.items"] = ("Éléments bloqués", "Blocked items"),

@@ -34,6 +34,16 @@
                 <StackPanel x:Name="DaysPanel" Orientation="Horizontal" Margin="0,0,0,10" />
                 <TextBlock x:Name="BlocklistLabel" FontSize="12" Opacity="0.6" Margin="0,0,0,8" />
                 <ComboBox x:Name="BlocklistCombo" HorizontalAlignment="Left" MinWidth="200" Margin="0,0,0,10" />
+                <DockPanel Margin="0,0,0,14" LastChildFill="False">
+                    <StackPanel Orientation="Horizontal" DockPanel.Dock="Left">
+                        <ui:SymbolIcon Symbol="LockClosed24" Margin="0,0,8,0" />
+                        <StackPanel>
+                            <TextBlock x:Name="HardModeLabel" VerticalAlignment="Center" />
+                            <TextBlock x:Name="HardModeDescText" FontSize="12" Opacity="0.6" Margin="0,2,0,0" />
+                        </StackPanel>
+                    </StackPanel>
+                    <ui:ToggleSwitch x:Name="HardModeToggle" DockPanel.Dock="Right" />
+                </DockPanel>
                 <ui:Button x:Name="AddPeriodButton" Appearance="Primary" HorizontalAlignment="Left" Click="AddPeriod_Click" />
             </StackPanel>
         </ui:CardExpander>

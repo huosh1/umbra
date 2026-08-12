@@ -111,6 +111,32 @@ public class PeriodsTests
     }
 
     [Fact]
+    public void GetTiming_ComputesRemainingAndTotal_WithinSameDay()
+    {
+        var now = new DateTime(2026, 1, 5, 15, 0, 0);
+        var p = new Period { StartTime = "14:00", EndTime = "16:00" };
+        var (remaining, total) = Periods.GetTiming(p, now);
+        Assert.Equal(3600, remaining); // 1h restante
+        Assert.Equal(7200, total); // 2h de plage totale
+    }
+
+    [Fact]
+    public void GetTiming_CrossingMidnight_ComputesFromTheCorrectStartDay()
+    {
+        var p = new Period { StartTime = "22:00", EndTime = "02:00" };
+
+        var lateNight = new DateTime(2026, 1, 5, 23, 0, 0); // avant minuit : la plage a demarre aujourd'hui
+        var (remainingLate, totalLate) = Periods.GetTiming(p, lateNight);
+        Assert.Equal(10800, remainingLate); // 23h -> 02h = 3h restantes
+        Assert.Equal(14400, totalLate); // 22h -> 02h = 4h au total
+
+        var earlyMorning = new DateTime(2026, 1, 6, 1, 0, 0); // apres minuit : la plage a demarre hier
+        var (remainingEarly, totalEarly) = Periods.GetTiming(p, earlyMorning);
+        Assert.Equal(3600, remainingEarly); // 01h -> 02h = 1h restante
+        Assert.Equal(14400, totalEarly);
+    }
+
+    [Fact]
     public void HasEnabledPeriod_ReflectsAtLeastOneEnabledPeriod_RegardlessOfActiveNow()
     {
         Assert.False(Periods.HasEnabledPeriod(new PeriodsData()));
