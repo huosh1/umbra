@@ -32,7 +32,15 @@ public static class AmbientSoundService
         new("rainforest", "Rainforest", "Rainforest.mp3", "rainforest.png"),
         new("whitenoise", "White Noise", "whitenoise.wav", "whitenoise.png"),
         new("thunder", "Thunder", "thunder.mp3", "thunder.png"),
-        new("fireplace", "Fireplace", "fireplace.wav", "fireplace.png")
+        new("fireplace", "Fireplace", "fireplace.wav", "fireplace.png"),
+        new("gangnamrain", "Gangnam Rain", "gangnamrain.mp3", "gangnamrain.png"),
+        new("hongdaenight", "Hongdae Night", "hongdaenight.mp3", "hongdaenight.png"),
+        new("tokyorain", "Tokyo Rain", "tokyorain.mp3", "tokyorain.png"),
+        new("shibuyanight", "Shibuya Night", "shibuyanight.mp3", "shibuyanight.png"),
+        new("neoncity", "Neon City Rain", "neoncity.mp3", "neoncity.png"),
+        new("neonstreets", "Neon Streets", "neonstreets.mp3", "neonstreets.png"),
+        new("forestbirds", "Forest Birds", "forestbirds.mp3", "forestbirds.png"),
+        new("windgusts", "Wind Gusts", "windgusts.mp3", "windgusts.png")
     ];
 
     public static IReadOnlyList<ActiveAmbientSound> Active => Players.Values
