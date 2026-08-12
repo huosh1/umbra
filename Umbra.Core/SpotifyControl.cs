@@ -10,6 +10,11 @@ public class NowPlayingInfo
     public string Title { get; set; } = "";
     public string Artist { get; set; } = "";
     public byte[]? Thumbnail { get; set; }
+    // Position de lecture dans le morceau - permet de distinguer une même
+    // chanson qui boucle (la position retombe brutalement vers 0) d'une
+    // lecture continue, ce que le titre/artiste seuls ne peuvent pas dire
+    // (voir NowPlayingBar.RefreshAsync, comptage des écoutes dans les stats).
+    public TimeSpan Position { get; set; }
 }
 
 // Interroge/pilote les Global System Media Transport Controls de Windows -
@@ -55,12 +60,15 @@ public static class SpotifyControl
                 }
             }
 
+            var timeline = session.GetTimelineProperties();
+
             return new NowPlayingInfo
             {
                 Playing = isPlaying,
                 Title = props.Title ?? "",
                 Artist = props.Artist ?? "",
                 Thumbnail = thumbnail,
+                Position = timeline.Position,
             };
         }
         catch

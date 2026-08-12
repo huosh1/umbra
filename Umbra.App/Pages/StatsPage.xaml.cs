@@ -129,7 +129,7 @@ public partial class StatsPage : UserControl
                 Margin = new Thickness(2),
                 Background = new SolidColorBrush(color),
                 Opacity = highlighted ? 1 : 0.12,
-                ToolTip = inYear ? $"{date:dd/MM/yyyy} · {minutes} min" : null,
+                ToolTip = inYear ? $"{date:dd/MM/yyyy} · {FormatDuration(minutes)}" : null,
             };
             Grid.SetColumn(cell, index / 7);
             Grid.SetRow(cell, index % 7);
@@ -221,8 +221,8 @@ public partial class StatsPage : UserControl
         var totalPlays = allTracks.Sum(track => track.PlayCount);
         var totalMinutes = (int)Math.Round(allTracks.Sum(track => track.Seconds) / 60);
         MusicTotalText.Text = Loc.Language == "fr"
-            ? $"{allTracks.Count} titre{(allTracks.Count == 1 ? "" : "s")} · {totalPlays} écoute{(totalPlays == 1 ? "" : "s")} · {totalMinutes} min au total"
-            : $"{allTracks.Count} track{(allTracks.Count == 1 ? "" : "s")} · {totalPlays} play{(totalPlays == 1 ? "" : "s")} · {totalMinutes} min total";
+            ? $"{allTracks.Count} titre{(allTracks.Count == 1 ? "" : "s")} · {totalPlays} écoute{(totalPlays == 1 ? "" : "s")} · {FormatDuration(totalMinutes)} au total"
+            : $"{allTracks.Count} track{(allTracks.Count == 1 ? "" : "s")} · {totalPlays} play{(totalPlays == 1 ? "" : "s")} · {FormatDuration(totalMinutes)} total";
         if (!_musicExpanded)
         {
             for (var i = 0; i < tracks.Count; i++)
@@ -298,7 +298,7 @@ public partial class StatsPage : UserControl
             : $"{track.PlayCount} play{(track.PlayCount == 1 ? "" : "s")}";
         text.Children.Add(new TextBlock
         {
-            Text = $"{plays}  ·  {minutes} min",
+            Text = $"{plays}  ·  {FormatDuration(minutes)}",
             FontSize = 10,
             Foreground = new SolidColorBrush(Color.FromRgb(145, 195, 225)),
             Margin = new Thickness(0, 7, 0, 0),
@@ -406,16 +406,29 @@ public partial class StatsPage : UserControl
 
         foreach (var (icon, label, value) in new (SymbolRegular, string, string)[]
         {
-            (SymbolRegular.Clock24, Loc.T("stats.today"), $"{s.TodayMinutes} min"),
-            (SymbolRegular.CalendarLtr24, Loc.T("stats.week"), $"{s.WeekMinutes} min"),
-            (SymbolRegular.CalendarMonth24, Loc.T("stats.month"), $"{s.MonthMinutes} min"),
-            (SymbolRegular.Timer24, Loc.T("stats.alltime"), $"{s.TotalMinutes} min"),
-            (SymbolRegular.Trophy24, Loc.T("stats.bestday"), $"{s.BestDayMinutes} min"),
-            (SymbolRegular.ArrowTrending24, Loc.T("stats.longest"), $"{s.LongestSessionMinutes} min"),
+            (SymbolRegular.Clock24, Loc.T("stats.today"), FormatDuration(s.TodayMinutes)),
+            (SymbolRegular.CalendarLtr24, Loc.T("stats.week"), FormatDuration(s.WeekMinutes)),
+            (SymbolRegular.CalendarMonth24, Loc.T("stats.month"), FormatDuration(s.MonthMinutes)),
+            (SymbolRegular.Timer24, Loc.T("stats.alltime"), FormatDuration(s.TotalMinutes)),
+            (SymbolRegular.Trophy24, Loc.T("stats.bestday"), FormatDuration(s.BestDayMinutes)),
+            (SymbolRegular.ArrowTrending24, Loc.T("stats.longest"), FormatDuration(s.LongestSessionMinutes)),
         })
         {
             SummaryGrid.Children.Add(BuildStatRow(icon, label, value));
         }
+    }
+
+    // Au-delà de 60 minutes, "90 min"/"1500 min" est moins lisible qu'un
+    // format à unité adaptée - bascule en heures puis en jours, en gardant
+    // au plus deux unités (jamais "1d 2h 30min", juste "1d 2h").
+    private static string FormatDuration(int minutes)
+    {
+        if (minutes < 60) return $"{minutes} min";
+        var days = minutes / 1440;
+        var hours = minutes % 1440 / 60;
+        var mins = minutes % 60;
+        if (days > 0) return hours > 0 ? $"{days}d {hours}h" : $"{days}d";
+        return mins > 0 ? $"{hours}h {mins}min" : $"{hours}h";
     }
 
     private static Grid BuildStatRow(SymbolRegular icon, string label, string value)

@@ -16,6 +16,7 @@ public partial class NowPlayingBar : UserControl
     private readonly DispatcherTimer _timer;
     private bool _isAdjustingVolume;
     private string? _lastPlayingTrack;
+    private TimeSpan? _lastPosition;
 
     public NowPlayingBar()
     {
@@ -159,13 +160,23 @@ public partial class NowPlayingBar : UserControl
         if (info.Playing && !string.IsNullOrEmpty(info.Title))
         {
             var trackKey = $"{info.Title}\n{info.Artist}";
-            var isNewPlay = !string.Equals(_lastPlayingTrack, trackKey, StringComparison.Ordinal);
+            var trackChanged = !string.Equals(_lastPlayingTrack, trackKey, StringComparison.Ordinal);
+            // Une boucle sur le même morceau garde le même titre/artiste,
+            // donc trackChanged seul ne la détecte jamais - un retour brutal
+            // de la position de lecture (plus qu'un simple jitter d'horloge
+            // sur l'intervalle de 3s de ce sondage) trahit un redémarrage,
+            // que ce soit une vraie boucle ou l'utilisateur qui relance le
+            // morceau depuis le début.
+            var looped = !trackChanged && _lastPosition is { } last && info.Position < last - TimeSpan.FromSeconds(2);
+            var isNewPlay = trackChanged || looped;
             await Task.Run(() => MusicHistory.RecordPlayback(info.Title, info.Artist, 3, info.Thumbnail, isNewPlay));
             _lastPlayingTrack = trackKey;
+            _lastPosition = info.Position;
         }
         else
         {
             _lastPlayingTrack = null;
+            _lastPosition = null;
         }
 
         // On ne réécrit pas la position du slider pendant que l'utilisateur
