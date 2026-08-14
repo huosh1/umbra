@@ -12,6 +12,8 @@ public partial class FocusPage : System.Windows.Controls.UserControl
     private bool _loaded;
     private List<SavedBlocklist> _savedBlocklists = new();
     private readonly string _clockStyle;
+    private SessionTasksData _tasks = SessionTasks.Load();
+    private bool _tasksPanelWasVisible;
 
     // Suivi des transitions pour déclencher les sons de fin de session/pause
     // (Réglages) - même logique de garde que WatchdogLoop.Enforcer côté
@@ -187,10 +189,90 @@ public partial class FocusPage : System.Windows.Controls.UserControl
             UpdatePreview();
         }
 
+        var showTasks = (active || activePeriod is not null) && Settings.Load().ShowSessionTasks;
+        SessionTasksPanel.Visibility = showTasks ? Visibility.Visible : Visibility.Collapsed;
+        // Ne reconstruit la liste que quand le panneau vient d'apparaître,
+        // pas à chaque tick (1s) - sinon un clic sur une case à cocher ou le
+        // bouton supprimer se ferait potentiellement voler par un rebuild
+        // survenant entre le mouse-down et le mouse-up.
+        if (showTasks && !_tasksPanelWasVisible) RenderTasks();
+        _tasksPanelWasVisible = showTasks;
+
         WatchdogStatusText.Text = WatchdogSupervisor.IsAlive() ? Loc.T("focus.watchdog.active") : Loc.T("focus.watchdog.inactive");
 
 
         CheckSoundTransitions(s);
+    }
+
+    private void RenderTasks()
+    {
+        TasksList.Items.Clear();
+        foreach (var task in _tasks.Tasks)
+        {
+            var check = new CheckBox
+            {
+                Content = task.Text,
+                IsChecked = task.Done,
+                Margin = new Thickness(0, 0, 0, 6),
+            };
+            if (task.Done)
+            {
+                check.Opacity = 0.55;
+                var run = new System.Windows.Documents.Run(task.Text) { TextDecorations = System.Windows.TextDecorations.Strikethrough };
+                check.Content = new System.Windows.Controls.TextBlock(run);
+            }
+            check.Checked += (_, _) => ToggleTask(task.Id, true);
+            check.Unchecked += (_, _) => ToggleTask(task.Id, false);
+
+            var remove = new Button
+            {
+                Style = (Style)FindResource("BareIconButton"),
+                Margin = new Thickness(6, 0, 0, 6),
+                Opacity = 0.5,
+                ToolTip = Loc.T("tasks.remove"),
+                Content = new Wpf.Ui.Controls.SymbolIcon { Symbol = Wpf.Ui.Controls.SymbolRegular.Dismiss24, FontSize = 13 },
+            };
+            remove.Click += (_, _) => RemoveTask(task.Id);
+
+            var row = new DockPanel();
+            DockPanel.SetDock(remove, Dock.Right);
+            row.Children.Add(remove);
+            row.Children.Add(check);
+            TasksList.Items.Add(row);
+        }
+    }
+
+    private void AddTask_Click(object sender, RoutedEventArgs e) => AddTaskFromBox();
+
+    private void NewTaskBox_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+    {
+        if (e.Key == System.Windows.Input.Key.Enter) AddTaskFromBox();
+    }
+
+    private void AddTaskFromBox()
+    {
+        var text = NewTaskBox.Text.Trim();
+        if (text.Length == 0) return;
+        _tasks.Tasks.Add(new SessionTaskItem { Id = Guid.NewGuid().ToString("N"), Text = text });
+        SessionTasks.Save(_tasks);
+        NewTaskBox.Text = "";
+        RenderTasks();
+    }
+
+    private void ToggleTask(string id, bool done)
+    {
+        var task = _tasks.Tasks.FirstOrDefault(t => t.Id == id);
+        if (task is null) return;
+        task.Done = done;
+        SessionTasks.Save(_tasks);
+        RenderTasks();
+    }
+
+    private void RemoveTask(string id)
+    {
+        _tasks.Tasks.RemoveAll(t => t.Id == id);
+        SessionTasks.Save(_tasks);
+        RenderTasks();
     }
 
     // "Fin de période de focus" = une session custom se termine, ou une

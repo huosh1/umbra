@@ -25,6 +25,7 @@ public class AppSettings
     public string? FloatingFocusBackgroundPath { get; set; }
     public List<string> RecentFloatingFocusBackgrounds { get; set; } = new();
     public double FloatingFocusBlur { get; set; } = 12;
+    public bool ShowSessionTasks { get; set; } // désactivé par défaut, opt-in depuis Réglages
 }
 
 public static class Settings

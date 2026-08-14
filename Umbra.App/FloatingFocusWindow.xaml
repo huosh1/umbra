@@ -22,6 +22,11 @@
                     <Button shell:WindowChrome.IsHitTestVisibleInChrome="True" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,3,3,0" Width="30" Height="30" Padding="5" Background="Transparent" BorderThickness="0" Foreground="White" Click="Close_Click"><ui:SymbolIcon Symbol="Dismiss24" FontSize="14" /></Button>
                 </Grid>
                 <Grid x:Name="RingHost" Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                <!-- Optionnel (Réglages > Tâches de session) - juste les
+                     tâches restantes, cochées elles disparaissent tout de
+                     suite au lieu de rester barrées : cette fenêtre reste
+                     petite/flottante, pas la place pour un historique. -->
+                <StackPanel x:Name="FloatingTasksPanel" Grid.Row="1" HorizontalAlignment="Left" VerticalAlignment="Center" MaxWidth="170" Visibility="Collapsed" />
                 <TextBlock x:Name="ModeDetailText" Grid.Row="2" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="11" Opacity="0.72" TextTrimming="CharacterEllipsis" />
                 <Grid Grid.Row="3">
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Center">

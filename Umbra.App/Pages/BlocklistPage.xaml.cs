@@ -178,8 +178,19 @@ public partial class BlocklistPage : UserControl
                 Padding = new Thickness(12, 8, 8, 8),
                 Margin = new Thickness(0, 0, 0, 6),
                 Child = row,
+                ToolTip = BuildSavedListTooltip(list),
             });
         }
+    }
+
+    // Le "· N" à côté du nom ne dit pas QUOI est bloqué - un survol montre
+    // le détail complet sans avoir à charger la liste pour vérifier.
+    private static string BuildSavedListTooltip(SavedBlocklist list)
+    {
+        var lines = new List<string>();
+        if (list.Apps.Count > 0) lines.Add($"{Loc.T("blocklist.apps")} : {string.Join(", ", list.Apps)}");
+        if (list.Sites.Count > 0) lines.Add($"{Loc.T("blocklist.sites")} : {string.Join(", ", list.Sites)}");
+        return lines.Count > 0 ? string.Join("\n", lines) : Loc.T("blocklist.saved.empty");
     }
 
     private void DeleteSaved(SavedBlocklist list)

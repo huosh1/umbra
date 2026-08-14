@@ -26,6 +26,22 @@
                     <Grid x:Name="ActiveRingHost" Height="270" HorizontalAlignment="Center"/>
                     <TextBlock x:Name="SessionTimeText" Visibility="Collapsed"/>
                     <ui:Button x:Name="StopButton" Appearance="Primary" Width="320" HorizontalAlignment="Center" Click="StopButton_Click"/>
+
+                    <!-- Optionnel (Réglages > Tâches de session) - juste un
+                         pense-bête à cocher pendant la session, pas un
+                         gestionnaire de projet : pas de date, pas de
+                         sous-tâches, les tâches restent d'une session à
+                         l'autre jusqu'à être cochées/supprimées. -->
+                    <StackPanel x:Name="SessionTasksPanel" Margin="0,26,0,0" Width="320" HorizontalAlignment="Center" Visibility="Collapsed">
+                        <Grid Margin="0,0,0,10">
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                            <ui:TextBox x:Name="NewTaskBox" Grid.Column="0" KeyDown="NewTaskBox_KeyDown"/>
+                            <ui:Button x:Name="AddTaskButton" Grid.Column="1" Margin="8,0,0,0" Appearance="Secondary" Click="AddTask_Click">
+                                <ui:SymbolIcon Symbol="Add24"/>
+                            </ui:Button>
+                        </Grid>
+                        <ItemsControl x:Name="TasksList"/>
+                    </StackPanel>
                 </StackPanel>
 
                 <Grid x:Name="ConfigPanel" Margin="24,48,24,24">

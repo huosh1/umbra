@@ -93,6 +93,57 @@ public partial class FloatingFocusWindow : Wpf.Ui.Controls.FluentWindow
             seconds > 0 ? $"{(int)(seconds / 60):D2}:{(int)(seconds % 60):D2}" : "--:--", Brushes.White, _clockStyle));
         PhaseText.Text = title;
         ModeDetailText.Text = detail;
+        RenderFloatingTasks();
+    }
+
+    private void RenderFloatingTasks()
+    {
+        if (!Settings.Load().ShowSessionTasks)
+        {
+            FloatingTasksPanel.Visibility = Visibility.Collapsed;
+            return;
+        }
+        var tasks = SessionTasks.Load().Tasks.Where(t => !t.Done).ToList();
+        if (tasks.Count == 0)
+        {
+            FloatingTasksPanel.Visibility = Visibility.Collapsed;
+            return;
+        }
+        FloatingTasksPanel.Visibility = Visibility.Visible;
+        FloatingTasksPanel.Children.Clear();
+        foreach (var task in tasks.Take(6))
+        {
+            var dot = new Border
+            {
+                Width = 12, Height = 12, CornerRadius = new CornerRadius(6),
+                BorderBrush = Brushes.White, BorderThickness = new Thickness(1.4),
+                Opacity = 0.85, Margin = new Thickness(0, 0, 8, 0),
+            };
+            var text = new TextBlock
+            {
+                Text = task.Text, FontSize = 11, Foreground = Brushes.White,
+                TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center,
+            };
+            var row = new StackPanel
+            {
+                Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 8), Cursor = Cursors.Hand,
+            };
+            row.Children.Add(dot);
+            row.Children.Add(text);
+            var id = task.Id;
+            row.MouseLeftButtonUp += (_, _) => CompleteFloatingTask(id);
+            FloatingTasksPanel.Children.Add(row);
+        }
+    }
+
+    private void CompleteFloatingTask(string id)
+    {
+        var data = SessionTasks.Load();
+        var task = data.Tasks.FirstOrDefault(t => t.Id == id);
+        if (task is null) return;
+        task.Done = true;
+        SessionTasks.Save(data);
+        RenderFloatingTasks();
     }
 
     private async Task RefreshSpotify()

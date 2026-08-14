@@ -44,6 +44,8 @@ public partial class SettingsPage : UserControl
         SoundBreakDescText.Text = Loc.T("settings.sound.break.desc");
         SpotifyTitleText.Text = Loc.T("settings.spotify.title");
         SpotifyDescText.Text = Loc.T("settings.spotify.desc");
+        TasksTitleText.Text = Loc.T("settings.tasks.title");
+        TasksDescText.Text = Loc.T("settings.tasks.desc");
         SmartReminderTitleText.Text = Loc.T("settings.reminder.title");
         SmartReminderDescText.Text = Loc.T("settings.reminder.desc");
         SmartReminderOffItem.Content = Loc.T("settings.reminder.off");
@@ -96,6 +98,7 @@ public partial class SettingsPage : UserControl
         SoundSessionToggle.IsChecked = _settings.PlayEndOfSessionSound;
         SoundBreakToggle.IsChecked = _settings.PlayEndOfBreakSound;
         SpotifyToggle.IsChecked = _settings.ShowSpotifyTile;
+        TasksToggle.IsChecked = _settings.ShowSessionTasks;
         SmartReminderModeBox.SelectedIndex = _settings.SmartReminderMode switch { "manual" => 1, "automatic" => 2, _ => 0 };
         SmartReminderTimeBox.Text = _settings.SmartReminderTime;
         FloatingFocusBlurSlider.Value = _settings.FloatingFocusBlur;
@@ -217,6 +220,13 @@ public partial class SettingsPage : UserControl
     {
         if (!_loaded) return;
         _settings.ShowSpotifyTile = SpotifyToggle.IsChecked == true;
+        Settings.Save(_settings);
+    }
+
+    private void TasksToggle_Changed(object sender, RoutedEventArgs e)
+    {
+        if (!_loaded) return;
+        _settings.ShowSessionTasks = TasksToggle.IsChecked == true;
         Settings.Save(_settings);
     }
 
