@@ -80,8 +80,17 @@ public partial class FloatingFocusWindow : Wpf.Ui.Controls.FluentWindow
             var period = Periods.GetActivePeriods(Periods.Load(), DateTime.Now).FirstOrDefault();
             if (period is not null)
             {
-                (seconds, total) = Periods.GetTiming(period, DateTime.Now);
-                title = string.Format(Loc.T("floating.schedule"), period.Name);
+                if (period.PomodoroMode)
+                {
+                    bool isBreak;
+                    (isBreak, seconds, total, _) = Periods.GetPomodoroTiming(period, DateTime.Now);
+                    title = string.Format(Loc.T(isBreak ? "floating.schedule.break" : "floating.schedule.focus"), period.Name);
+                }
+                else
+                {
+                    (seconds, total) = Periods.GetTiming(period, DateTime.Now);
+                    title = string.Format(Loc.T("floating.schedule"), period.Name);
+                }
                 detail = string.Format(Loc.T("floating.ends"), period.EndTime);
             }
         }

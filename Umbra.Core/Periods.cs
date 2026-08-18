@@ -21,6 +21,10 @@ public class Period
     // manuelle est contournable en désactivant simplement la plage à la
     // place. Ne restreint rien en dehors de sa fenêtre horaire active.
     public bool HardMode { get; set; }
+    // Pendant que la plage bloque activement, alterne 25 min concentration /
+    // 5 min pause au lieu d'un simple compte à rebours jusqu'à la fin -
+    // voir Periods.GetPomodoroTiming.
+    public bool PomodoroMode { get; set; }
 }
 
 public class PeriodsData
@@ -134,5 +138,39 @@ public static class Periods
             if (now < end) start = start.AddDays(-1); else end = end.AddDays(1);
         }
         return (Math.Max(0, (end - now).TotalSeconds), Math.Max(1, (end - start).TotalSeconds));
+    }
+
+    // Comme GetTiming, mais pour une plage en PomodoroMode : découpe le temps
+    // écoulé depuis le début de la plage en cycles classiques 25/5 qui se
+    // répètent jusqu'à la fin de la plage - pas de "cycles total" fixe comme
+    // une session manuelle (Session.StartPomodoro), c'est la fin de la plage
+    // elle-même qui borne/tronque le dernier cycle. Stateless comme GetTiming :
+    // recalculé à chaque appel à partir de l'heure de début, rien à persister.
+    public static (bool IsBreak, double RemainingSeconds, double TotalSeconds, int Cycle) GetPomodoroTiming(Period period, DateTime now)
+    {
+        if (!TimeSpan.TryParse(period.StartTime, out var startTime) || !TimeSpan.TryParse(period.EndTime, out var endTime))
+            return (false, 0, 1, 1);
+        var start = now.Date + startTime;
+        var end = now.Date + endTime;
+        if (end <= start)
+        {
+            if (now < end) start = start.AddDays(-1); else end = end.AddDays(1);
+        }
+
+        const double focusSeconds = 25 * 60, breakSeconds = 5 * 60, cycleSeconds = focusSeconds + breakSeconds;
+        var elapsed = Math.Max(0, (now - start).TotalSeconds);
+        var cycleIndex = (int)(elapsed / cycleSeconds);
+        var posInCycle = elapsed - cycleIndex * cycleSeconds;
+        var isBreak = posInCycle >= focusSeconds;
+        var phaseTotal = isBreak ? breakSeconds : focusSeconds;
+        var phaseElapsed = isBreak ? posInCycle - focusSeconds : posInCycle;
+        var remaining = phaseTotal - phaseElapsed;
+
+        // La phase en cours ne doit jamais déborder après la fin de la plage
+        // (pas de pause qui continuerait alors que le planning est terminé).
+        var untilPeriodEnd = (end - now).TotalSeconds;
+        if (remaining > untilPeriodEnd) remaining = Math.Max(0, untilPeriodEnd);
+
+        return (isBreak, remaining, phaseTotal, cycleIndex + 1);
     }
 }

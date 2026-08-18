@@ -32,6 +32,8 @@ public partial class PeriodsPage : UserControl
         BlocklistLabel.Text = Loc.T("periods.blocklist.label");
         HardModeLabel.Text = Loc.T("periods.hardmode");
         HardModeDescText.Text = Loc.T("periods.hardmode.desc");
+        PomodoroModeLabel.Text = Loc.T("periods.pomodoro");
+        PomodoroModeDescText.Text = Loc.T("periods.pomodoro.desc");
         AddPeriodButton.Content = Loc.T("periods.add");
 
         BuildDayButtons();
@@ -135,6 +137,7 @@ public partial class PeriodsPage : UserControl
 
         var left = new StackPanel { Orientation = Orientation.Horizontal };
         if (p.HardMode) left.Children.Add(new SymbolIcon { Symbol = SymbolRegular.LockClosed24, Margin = new Thickness(0, 0, 6, 0), Opacity = 0.7, VerticalAlignment = VerticalAlignment.Center });
+        if (p.PomodoroMode) left.Children.Add(new SymbolIcon { Symbol = SymbolRegular.Timer24, Margin = new Thickness(0, 0, 6, 0), Opacity = 0.7, VerticalAlignment = VerticalAlignment.Center });
         left.Children.Add(enabledBox);
         left.Children.Add(detail);
 
@@ -156,6 +159,7 @@ public partial class PeriodsPage : UserControl
             StartTime = string.IsNullOrWhiteSpace(StartBox.Text) ? "00:00" : StartBox.Text.Trim(),
             EndTime = string.IsNullOrWhiteSpace(EndBox.Text) ? "00:00" : EndBox.Text.Trim(),
             HardMode = HardModeToggle.IsChecked == true,
+            PomodoroMode = PomodoroModeToggle.IsChecked == true,
         };
         if (BlocklistCombo.SelectedIndex > 0)
         {
@@ -170,6 +174,7 @@ public partial class PeriodsPage : UserControl
         _selectedDays.Clear();
         BlocklistCombo.SelectedIndex = 0;
         HardModeToggle.IsChecked = false;
+        PomodoroModeToggle.IsChecked = false;
         Render();
     }
 }

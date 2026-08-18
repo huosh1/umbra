@@ -174,9 +174,19 @@ public partial class FocusPage : System.Windows.Controls.UserControl
         }
         else if (activePeriod is not null)
         {
-            var (remainingSeconds, totalSeconds) = Periods.GetTiming(activePeriod, DateTime.Now);
+            double remainingSeconds, totalSeconds;
+            if (activePeriod.PomodoroMode)
+            {
+                bool isBreak;
+                (isBreak, remainingSeconds, totalSeconds, _) = Periods.GetPomodoroTiming(activePeriod, DateTime.Now);
+                SessionStatusText.Text = string.Format(Loc.T(isBreak ? "focus.status.schedule.break" : "focus.status.schedule.focus"), activePeriod.Name);
+            }
+            else
+            {
+                (remainingSeconds, totalSeconds) = Periods.GetTiming(activePeriod, DateTime.Now);
+                SessionStatusText.Text = string.Format(Loc.T("focus.status.schedule"), activePeriod.Name);
+            }
             var remaining = TimeSpan.FromSeconds(remainingSeconds);
-            SessionStatusText.Text = string.Format(Loc.T("focus.status.schedule"), activePeriod.Name);
             SessionTimeText.Text = $"{(int)remaining.TotalMinutes:D2}:{remaining.Seconds:D2}";
             StopButton.Visibility = Visibility.Collapsed; // rien à arrêter depuis ici : c'est le planning qui pilote
             ActiveRingHost.Children.Clear();

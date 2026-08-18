@@ -137,6 +137,56 @@ public class PeriodsTests
     }
 
     [Fact]
+    public void GetPomodoroTiming_FirstFocusPhase_CountsDownFrom25Minutes()
+    {
+        var now = new DateTime(2026, 1, 5, 14, 10, 0); // 10 min après le début de la plage
+        var p = new Period { StartTime = "14:00", EndTime = "18:00", PomodoroMode = true };
+        var (isBreak, remaining, total, cycle) = Periods.GetPomodoroTiming(p, now);
+        Assert.False(isBreak);
+        Assert.Equal(1, cycle);
+        Assert.Equal(25 * 60, total);
+        Assert.Equal(15 * 60, remaining); // 25 - 10 = 15 min restantes
+    }
+
+    [Fact]
+    public void GetPomodoroTiming_SwitchesToBreak_AfterFocusPhaseElapses()
+    {
+        var now = new DateTime(2026, 1, 5, 14, 27, 0); // 27 min après le début : 25 min focus écoulées, 2 min de pause
+        var p = new Period { StartTime = "14:00", EndTime = "18:00", PomodoroMode = true };
+        var (isBreak, remaining, total, cycle) = Periods.GetPomodoroTiming(p, now);
+        Assert.True(isBreak);
+        Assert.Equal(1, cycle);
+        Assert.Equal(5 * 60, total);
+        Assert.Equal(3 * 60, remaining); // 5 - 2 = 3 min restantes
+    }
+
+    [Fact]
+    public void GetPomodoroTiming_StartsSecondCycle_AfterFirstCycleCompletes()
+    {
+        var now = new DateTime(2026, 1, 5, 14, 35, 0); // 35 min après le début : 30 min de cycle écoulées, 5 min dans le 2e focus
+        var p = new Period { StartTime = "14:00", EndTime = "18:00", PomodoroMode = true };
+        var (isBreak, remaining, _, cycle) = Periods.GetPomodoroTiming(p, now);
+        Assert.False(isBreak);
+        Assert.Equal(2, cycle);
+        Assert.Equal(20 * 60, remaining); // 25 - 5 = 20 min restantes
+    }
+
+    [Fact]
+    public void GetPomodoroTiming_TruncatesLastPhase_AtPeriodEnd()
+    {
+        // Plage de 3h45 (225 min) : pas un multiple du cycle de 30 min, donc
+        // le dernier cycle (8e, en concentration) tombe en plein milieu -
+        // sans troncature il indiquerait 15 min restantes alors que la plage
+        // se termine dans 5 min.
+        var now = new DateTime(2026, 1, 5, 17, 40, 0);
+        var p = new Period { StartTime = "14:00", EndTime = "17:45", PomodoroMode = true };
+        var (isBreak, remaining, _, cycle) = Periods.GetPomodoroTiming(p, now);
+        Assert.False(isBreak);
+        Assert.Equal(8, cycle);
+        Assert.Equal(5 * 60, remaining); // tronqué à la fin de la plage, pas au reste naturel de la phase (15 min)
+    }
+
+    [Fact]
     public void HasEnabledPeriod_ReflectsAtLeastOneEnabledPeriod_RegardlessOfActiveNow()
     {
         Assert.False(Periods.HasEnabledPeriod(new PeriodsData()));
