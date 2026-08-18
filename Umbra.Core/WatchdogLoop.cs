@@ -106,8 +106,13 @@ public static class WatchdogLoop
             var s = Session.Load(); // fait aussi avancer les phases pomodoro dues
             var periodsData = Periods.Load();
             var activePeriods = Periods.GetActivePeriods(periodsData, DateTime.Now);
+            // Comme Session.IsBlockingActive pour une session manuelle : une
+            // plage en PomodoroMode ne doit pas bloquer pendant sa pause,
+            // même si elle reste "active" au sens fenêtre horaire (l'anneau
+            // continue de tourner côté UI, seul le blocage s'arrête).
+            var blockingPeriods = activePeriods.Where(p => !p.PomodoroMode || !Periods.GetPomodoroTiming(p, DateTime.Now).IsBreak).ToList();
             var sessionBlocking = Session.IsBlockingActive(s);
-            var shouldBlock = sessionBlocking || activePeriods.Count > 0;
+            var shouldBlock = sessionBlocking || blockingPeriods.Count > 0;
 
             TrackPeriodHistory(s, activePeriods);
 
@@ -132,7 +137,7 @@ public static class WatchdogLoop
                         Log($"ERROR loading blocklist: {err.Message}");
                     }
                 }
-                foreach (var p in activePeriods)
+                foreach (var p in blockingPeriods)
                 {
                     foreach (var a in p.Apps) apps.Add(a);
                     foreach (var st in p.Sites) sites.Add(st);
