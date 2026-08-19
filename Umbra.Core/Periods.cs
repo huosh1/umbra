@@ -63,15 +63,33 @@ public static class Periods
 
     public static void Save(PeriodsData data)
     {
-        File.WriteAllText(Config.PeriodsFile, JsonSerializer.Serialize(data, Json.Options));
+        AtomicFile.WriteAllText(Config.PeriodsFile, JsonSerializer.Serialize(data, Json.Options));
     }
 
-    private static int TimeToMinutes(string? hhmm)
+    // Seul parseur d'heure de tout Periods.cs (et de la validation à la
+    // création, voir PeriodsPage.xaml.cs.IsValidTime) - avant, PeriodCoversNow
+    // (Split(':') maison) et GetTiming/GetPomodoroTiming (TimeSpan.TryParse)
+    // étaient deux parseurs indépendants qui géraient une entrée invalide
+    // chacun à sa façon : un StartTime mal formé ("13.00" au lieu de "13:00",
+    // un vrai cas rencontré) passait pour minuit côté couverture horaire mais
+    // pour une fenêtre nulle côté minuteur - la plage bloquait sur une fenêtre
+    // totalement différente de celle affichée, sans qu'aucune erreur ne
+    // remonte nulle part. Accepte "H:mm" et "HH:mm" (heure à un ou deux
+    // chiffres) mais rien d'autre.
+    private static readonly string[] TimeFormats = { "h\\:mm", "hh\\:mm" };
+
+    public static bool TryParseTime(string? text, out TimeSpan time) =>
+        TimeSpan.TryParseExact(text, TimeFormats, System.Globalization.CultureInfo.InvariantCulture, out time);
+
+    private static bool TryTimeToMinutes(string? hhmm, out int minutes)
     {
-        var parts = (hhmm ?? "00:00").Split(':');
-        var h = parts.Length > 0 && int.TryParse(parts[0], out var hv) ? hv : 0;
-        var m = parts.Length > 1 && int.TryParse(parts[1], out var mv) ? mv : 0;
-        return h * 60 + m;
+        if (!TryParseTime(hhmm, out var time))
+        {
+            minutes = 0;
+            return false;
+        }
+        minutes = (int)time.TotalMinutes;
+        return true;
     }
 
     public static bool PeriodCoversNow(Period p, DateTime now)
@@ -83,9 +101,13 @@ public static class Periods
         // rien devoir réactiver à la main.
         if (p.PausedDate == TodayKey(now)) return false;
 
+        // Une StartTime/EndTime invalide (fichier corrompu, edit manuel...)
+        // ne doit plus jamais faire bloquer sur une fenêtre inventée -
+        // mieux vaut une plage silencieusement inactive qu'un blocage sur
+        // des horaires que personne n'a configurés.
+        if (!TryTimeToMinutes(p.StartTime, out var start) || !TryTimeToMinutes(p.EndTime, out var end)) return false;
+
         var mins = now.Hour * 60 + now.Minute;
-        var start = TimeToMinutes(p.StartTime);
-        var end = TimeToMinutes(p.EndTime);
         if (start == end) return false;
 
         if (p.Recurring)
@@ -105,7 +127,7 @@ public static class Periods
     public static int MinutesUntilEnd(Period p, DateTime now)
     {
         var mins = now.Hour * 60 + now.Minute;
-        var end = TimeToMinutes(p.EndTime);
+        if (!TryTimeToMinutes(p.EndTime, out var end)) return 0;
         if (end > mins) return end - mins;
         return 1440 - mins + end; // la fin est passée minuit (plage récurrente uniquement)
     }
@@ -129,7 +151,7 @@ public static class Periods
     // responsable de l'avoir vérifié via PeriodCoversNow au préalable.
     public static (double RemainingSeconds, double TotalSeconds) GetTiming(Period period, DateTime now)
     {
-        if (!TimeSpan.TryParse(period.StartTime, out var startTime) || !TimeSpan.TryParse(period.EndTime, out var endTime))
+        if (!TryParseTime(period.StartTime, out var startTime) || !TryParseTime(period.EndTime, out var endTime))
             return (0, 1);
         var start = now.Date + startTime;
         var end = now.Date + endTime;
@@ -148,7 +170,7 @@ public static class Periods
     // recalculé à chaque appel à partir de l'heure de début, rien à persister.
     public static (bool IsBreak, double RemainingSeconds, double TotalSeconds, int Cycle) GetPomodoroTiming(Period period, DateTime now)
     {
-        if (!TimeSpan.TryParse(period.StartTime, out var startTime) || !TimeSpan.TryParse(period.EndTime, out var endTime))
+        if (!TryParseTime(period.StartTime, out var startTime) || !TryParseTime(period.EndTime, out var endTime))
             return (false, 0, 1, 1);
         var start = now.Date + startTime;
         var end = now.Date + endTime;

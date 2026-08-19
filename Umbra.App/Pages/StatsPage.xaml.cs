@@ -26,6 +26,11 @@ public partial class StatsPage : UserControl
     // première passe (StaticResource introuvable = XamlParseException).
     private static Brush Res(string key) => (Brush)Application.Current.Resources[key];
 
+    // Ambre de la page Stats (chiffre de streak, fill des jours actifs) -
+    // référence unique pour que tout élément "positif/actif" de cette page
+    // reste visuellement de la même famille de couleur.
+    private static readonly Color StreakColor = Color.FromRgb(0xF7, 0xA2, 0x1B);
+
     public StatsPage()
     {
         InitializeComponent();
@@ -367,6 +372,10 @@ public partial class StatsPage : UserControl
     {
         var s = History.GetStats();
         StreakNumberText.Text = s.StreakDays.ToString();
+        StreakRecordText.Text = s.BestStreakDays > 0
+            ? string.Format(Loc.T("stats.streak.record"), Loc.Language == "fr" ? $"{s.BestStreakDays} jour{(s.BestStreakDays == 1 ? "" : "s")}" : $"{s.BestStreakDays} day{(s.BestStreakDays == 1 ? "" : "s")}")
+            : "";
+        StreakRecordText.Visibility = s.BestStreakDays > 0 ? Visibility.Visible : Visibility.Collapsed;
 
         var dayLetters = Loc.DayLetters;
         var weekdays = History.GetWeekdayBreakdown(30);
@@ -383,8 +392,8 @@ public partial class StatsPage : UserControl
                 Height = 28,
                 CornerRadius = new CornerRadius(14),
                 Margin = new Thickness(2, 0, 2, 0),
-                Background = active ? new SolidColorBrush(Color.FromRgb(0xF7, 0xA2, 0x1B)) : Res("ControlFillColorSecondaryBrush"),
-                BorderBrush = isToday ? new SolidColorBrush(Color.FromRgb(0xF7, 0xA2, 0x1B)) : null,
+                Background = active ? new SolidColorBrush(StreakColor) : Res("ControlFillColorSecondaryBrush"),
+                BorderBrush = isToday ? new SolidColorBrush(StreakColor) : null,
                 BorderThickness = isToday ? new Thickness(2) : new Thickness(0),
                 Child = new TextBlock
                 {
@@ -404,17 +413,33 @@ public partial class StatsPage : UserControl
         var s = History.GetStats();
         SummaryGrid.Children.Clear();
 
-        foreach (var (icon, label, value) in new (SymbolRegular, string, string)[]
+        // Comparaison à la semaine calendaire précédente - seulement si elle
+        // a au moins une minute enregistrée, sinon un pourcentage n'a pas de
+        // sens (division par zéro / "infini" pour une première semaine).
+        string? weekTrendText = null;
+        Brush? weekTrendBrush = null;
+        if (s.PreviousWeekMinutes > 0)
         {
-            (SymbolRegular.Clock24, Loc.T("stats.today"), FormatDuration(s.TodayMinutes)),
-            (SymbolRegular.CalendarLtr24, Loc.T("stats.week"), FormatDuration(s.WeekMinutes)),
-            (SymbolRegular.CalendarMonth24, Loc.T("stats.month"), FormatDuration(s.MonthMinutes)),
-            (SymbolRegular.Timer24, Loc.T("stats.alltime"), FormatDuration(s.TotalMinutes)),
-            (SymbolRegular.Trophy24, Loc.T("stats.bestday"), FormatDuration(s.BestDayMinutes)),
-            (SymbolRegular.ArrowTrending24, Loc.T("stats.longest"), FormatDuration(s.LongestSessionMinutes)),
+            var pct = (int)Math.Round((s.WeekMinutes - s.PreviousWeekMinutes) / (double)s.PreviousWeekMinutes * 100);
+            weekTrendText = $"{(pct >= 0 ? "+" : "")}{pct}%";
+            // Même ambre que le chiffre de streak et le fill des jours actifs
+            // (StreakColor) - pas de rouge/vert façon feu tricolore, ça
+            // détonnerait avec le reste de la page. La baisse reste lisible
+            // via l'opacité réduite plutôt qu'une couleur différente.
+            weekTrendBrush = new SolidColorBrush(StreakColor) { Opacity = pct >= 0 ? 1 : 0.5 };
+        }
+
+        foreach (var (icon, label, value, trendText, trendBrush) in new (SymbolRegular, string, string, string?, Brush?)[]
+        {
+            (SymbolRegular.Clock24, Loc.T("stats.today"), FormatDuration(s.TodayMinutes), null, null),
+            (SymbolRegular.CalendarLtr24, Loc.T("stats.week"), FormatDuration(s.WeekMinutes), weekTrendText, weekTrendBrush),
+            (SymbolRegular.CalendarMonth24, Loc.T("stats.month"), FormatDuration(s.MonthMinutes), null, null),
+            (SymbolRegular.Timer24, Loc.T("stats.alltime"), FormatDuration(s.TotalMinutes), null, null),
+            (SymbolRegular.Trophy24, Loc.T("stats.bestday"), FormatDuration(s.BestDayMinutes), null, null),
+            (SymbolRegular.ArrowTrending24, Loc.T("stats.longest"), FormatDuration(s.LongestSessionMinutes), null, null),
         })
         {
-            SummaryGrid.Children.Add(BuildStatRow(icon, label, value));
+            SummaryGrid.Children.Add(BuildStatRow(icon, label, value, trendText, trendBrush));
         }
     }
 
@@ -431,7 +456,7 @@ public partial class StatsPage : UserControl
         return mins > 0 ? $"{hours}h {mins}min" : $"{hours}h";
     }
 
-    private static Grid BuildStatRow(SymbolRegular icon, string label, string value)
+    private static Grid BuildStatRow(SymbolRegular icon, string label, string value, string? trendText = null, Brush? trendBrush = null)
     {
         var grid = new Grid { Margin = new Thickness(8, 8, 12, 8) };
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
@@ -442,7 +467,21 @@ public partial class StatsPage : UserControl
 
         var stack = new StackPanel();
         stack.Children.Add(new TextBlock { Text = label, FontSize = 12, Opacity = 0.6 });
-        stack.Children.Add(new TextBlock { Text = value, FontSize = 18, FontWeight = FontWeights.SemiBold });
+        var valueRow = new StackPanel { Orientation = Orientation.Horizontal };
+        valueRow.Children.Add(new TextBlock { Text = value, FontSize = 18, FontWeight = FontWeights.SemiBold });
+        if (trendText is not null)
+        {
+            valueRow.Children.Add(new TextBlock
+            {
+                Text = trendText,
+                FontSize = 12,
+                FontWeight = FontWeights.SemiBold,
+                Foreground = trendBrush,
+                Margin = new Thickness(6, 0, 0, 1),
+                VerticalAlignment = VerticalAlignment.Bottom,
+            });
+        }
+        stack.Children.Add(valueRow);
         Grid.SetColumn(stack, 1);
 
         grid.Children.Add(iconEl);

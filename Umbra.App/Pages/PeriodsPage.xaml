@@ -18,10 +18,28 @@
     <Grid MaxWidth="1100">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <ui:CardExpander x:Name="NewPeriodExpander" Grid.Row="0" IsExpanded="True" Margin="0,0,0,8">
+        <!-- Basé sur History.GetSuggestedStartHour (heure de début la plus
+             fréquente sur les 30 derniers jours) - masqué si l'utilisateur
+             a déjà ignoré cette heure précise (Settings.DismissedSuggestedHour)
+             ou si une plage la couvre déjà. Voir PeriodsPage.xaml.cs.RenderSuggestion. -->
+        <ui:CardControl x:Name="SuggestionCard" Grid.Row="0" Margin="0,0,0,8" Visibility="Collapsed">
+            <ui:CardControl.Icon>
+                <ui:SymbolIcon Symbol="Lightbulb24" />
+            </ui:CardControl.Icon>
+            <ui:CardControl.Header>
+                <TextBlock x:Name="SuggestionText" TextWrapping="Wrap" VerticalAlignment="Center" />
+            </ui:CardControl.Header>
+            <StackPanel Orientation="Horizontal">
+                <ui:Button x:Name="SuggestionCreateButton" Appearance="Primary" Margin="0,0,8,0" Click="SuggestionCreate_Click" />
+                <ui:Button x:Name="SuggestionDismissButton" Appearance="Secondary" Click="SuggestionDismiss_Click" />
+            </StackPanel>
+        </ui:CardControl>
+
+        <ui:CardExpander x:Name="NewPeriodExpander" Grid.Row="1" IsExpanded="True" Margin="0,0,0,8">
             <StackPanel MinWidth="500">
                 <ui:TextBox x:Name="NameBox" Margin="0,0,0,8" />
                 <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
@@ -58,7 +76,7 @@
             </StackPanel>
         </ui:CardExpander>
 
-        <StackPanel Grid.Row="1">
+        <StackPanel Grid.Row="2">
             <ScrollViewer MaxHeight="300" VerticalScrollBarVisibility="Auto">
                 <ItemsControl x:Name="PeriodsList" />
             </ScrollViewer>

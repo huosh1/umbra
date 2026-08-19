@@ -94,7 +94,7 @@ public static class Vocab
 
     private static void SaveProgress(Dictionary<string, string> progress)
     {
-        File.WriteAllText(Config.VocabProgressFile, JsonSerializer.Serialize(progress, Json.Options));
+        AtomicFile.WriteAllText(Config.VocabProgressFile, JsonSerializer.Serialize(progress, Json.Options));
     }
 
     public static List<VocabWord> LoadAll()
@@ -377,7 +377,7 @@ public static class Vocab
         var existingIds = new HashSet<string>(existing.Select(e => e.Id));
         var toAdd = normalized.Where(e => !existingIds.Contains(e.Id)).ToList();
         var combined = existing.Concat(toAdd).ToList();
-        File.WriteAllText(destFile, JsonSerializer.Serialize(combined, Json.Options));
+        AtomicFile.WriteAllText(destFile, JsonSerializer.Serialize(combined, Json.Options));
         return new ImportResult { Count = toAdd.Count, File = Path.GetFileName(destFile) };
     }
 }

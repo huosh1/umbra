@@ -187,6 +187,26 @@ public class PeriodsTests
     }
 
     [Fact]
+    public void PeriodCoversNow_AcceptsSingleDigitHour()
+    {
+        var now = new DateTime(2026, 1, 5, 9, 30, 0); // lundi
+        var p = MakePeriod(true, true, days: new List<int> { (int)now.DayOfWeek }, startTime: "9:00", endTime: "17:00");
+        Assert.Single(Periods.GetActivePeriods(new PeriodsData { Periods = new List<Period> { p } }, now));
+    }
+
+    [Fact]
+    public void PeriodCoversNow_MalformedStartTime_NeverConsideredActive_InsteadOfSilentlyDefaultingToMidnight()
+    {
+        // Régression : "13.00" (point au lieu de deux-points) était avant
+        // silencieusement compris comme minuit par l'ancien parseur maison de
+        // PeriodCoversNow, faisant bloquer sur une fenêtre 00:00-20:00 au lieu
+        // de ne pas être active du tout.
+        var now = new DateTime(2026, 1, 5, 9, 0, 0); // lundi, dans la fenêtre 00:00-20:00 que l'ancien bug aurait produite
+        var p = MakePeriod(true, true, days: new List<int> { (int)now.DayOfWeek }, startTime: "13.00", endTime: "20:00");
+        Assert.Empty(Periods.GetActivePeriods(new PeriodsData { Periods = new List<Period> { p } }, now));
+    }
+
+    [Fact]
     public void HasEnabledPeriod_ReflectsAtLeastOneEnabledPeriod_RegardlessOfActiveNow()
     {
         Assert.False(Periods.HasEnabledPeriod(new PeriodsData()));

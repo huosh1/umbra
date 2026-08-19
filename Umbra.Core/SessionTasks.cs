@@ -37,6 +37,6 @@ public static class SessionTasks
 
     public static void Save(SessionTasksData data)
     {
-        File.WriteAllText(Config.SessionTasksFile, JsonSerializer.Serialize(data, Json.Options));
+        AtomicFile.WriteAllText(Config.SessionTasksFile, JsonSerializer.Serialize(data, Json.Options));
     }
 }

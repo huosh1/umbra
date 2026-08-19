@@ -26,6 +26,11 @@
                     <Grid x:Name="ActiveRingHost" Height="270" HorizontalAlignment="Center"/>
                     <TextBlock x:Name="SessionTimeText" Visibility="Collapsed"/>
                     <ui:Button x:Name="StopButton" Appearance="Primary" Width="320" HorizontalAlignment="Center" Click="StopButton_Click"/>
+                    <!-- Hors hard mode : premier clic = démarre un délai de
+                         10s avant que le vrai arrêt ne soit possible (voir
+                         StopButton_Click) - dissuade l'arrêt impulsif sans
+                         forcer le hard mode. "Annuler" revient à l'état normal. -->
+                    <Button x:Name="CancelStopLink" Style="{StaticResource BareIconButton}" HorizontalAlignment="Center" Margin="0,6,0,0" Visibility="Collapsed" Click="CancelStop_Click"/>
 
                     <!-- Optionnel (Réglages > Tâches de session) - juste un
                          pense-bête à cocher pendant la session, pas un

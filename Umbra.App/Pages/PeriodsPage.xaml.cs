@@ -15,6 +15,7 @@ public partial class PeriodsPage : UserControl
     private static readonly int[] DayIndexToDow = [1, 2, 3, 4, 5, 6, 0];
 
     private PeriodsData _data = Periods.Load();
+    private int? _suggestedHour;
     private readonly HashSet<int> _selectedDays = new();
     private readonly List<ToggleButton> _dayButtons = new();
     private List<SavedBlocklist> _savedBlocklists = new();
@@ -35,10 +36,13 @@ public partial class PeriodsPage : UserControl
         PomodoroModeLabel.Text = Loc.T("periods.pomodoro");
         PomodoroModeDescText.Text = Loc.T("periods.pomodoro.desc");
         AddPeriodButton.Content = Loc.T("periods.add");
+        SuggestionCreateButton.Content = Loc.T("periods.suggestion.create");
+        SuggestionDismissButton.Content = Loc.T("periods.suggestion.dismiss");
 
         BuildDayButtons();
         BuildBlocklistCombo();
         Render();
+        RenderSuggestion();
 
         // Une plage peut entrer/sortir de sa fenêtre active pendant que cet
         // onglet reste ouvert (le TabControl parent ne recrée pas cette page
@@ -89,6 +93,47 @@ public partial class PeriodsPage : UserControl
     {
         PeriodsList.Items.Clear();
         foreach (var p in _data.Periods) PeriodsList.Items.Add(BuildRow(p));
+    }
+
+    // Nudge doux basé sur l'heure de décrochage la plus fréquente
+    // (History.GetSuggestedStartHour, 30 derniers jours) - jamais insistant :
+    // une fois ignorée pour une heure donnée, elle ne revient que si le pic
+    // d'usage se déplace vers une autre heure.
+    private void RenderSuggestion()
+    {
+        var settings = Settings.Load();
+        var suggestedHour = History.GetSuggestedStartHour();
+        var alreadyCovered = suggestedHour is { } hour &&
+            _data.Periods.Any(p => Periods.TryParseTime(p.StartTime, out var start) && (int)start.TotalHours == hour);
+
+        if (suggestedHour is not { } h || h == settings.DismissedSuggestedHour || alreadyCovered)
+        {
+            _suggestedHour = null;
+            SuggestionCard.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        _suggestedHour = h;
+        SuggestionText.Text = string.Format(Loc.T("periods.suggestion.text"), $"{h:D2}:00");
+        SuggestionCard.Visibility = Visibility.Visible;
+    }
+
+    private void SuggestionCreate_Click(object sender, RoutedEventArgs e)
+    {
+        if (_suggestedHour is not { } hour) return;
+        NewPeriodExpander.IsExpanded = true;
+        StartBox.Text = $"{hour:D2}:00";
+        EndBox.Text = $"{(hour + 1) % 24:D2}:00";
+        SuggestionCard.Visibility = Visibility.Collapsed;
+    }
+
+    private void SuggestionDismiss_Click(object sender, RoutedEventArgs e)
+    {
+        if (_suggestedHour is not { } hour) return;
+        var settings = Settings.Load();
+        settings.DismissedSuggestedHour = hour;
+        Settings.Save(settings);
+        SuggestionCard.Visibility = Visibility.Collapsed;
     }
 
     private CardControl BuildRow(Period p)
@@ -144,10 +189,27 @@ public partial class PeriodsPage : UserControl
         return new CardControl { Header = left, Content = removeBtn, Margin = new Thickness(0, 0, 0, 6) };
     }
 
+    // "13.00" au lieu de "13:00" ne lève aucune erreur au clic : PeriodCoversNow
+    // (parseur maison, Split(':')) et GetTiming/GetPomodoroTiming (TimeSpan.TryParse)
+    // gèrent l'entrée invalide chacun à sa façon (silencieusement minuit pour l'un,
+    // fenêtre figée à 0 pour l'autre) - la plage se retrouve active sur une fenêtre
+    // totalement différente de celle tapée, sans jamais prévenir personne. D'où cette
+    // validation au moment de la création, avant que la valeur invalide n'atteigne
+    // periods.json.
+    private static bool IsValidTime(string text) => Periods.TryParseTime(text, out _);
+
     private void AddPeriod_Click(object sender, RoutedEventArgs e)
     {
         var name = string.IsNullOrWhiteSpace(NameBox.Text) ? Loc.T("periods.name.default") : NameBox.Text.Trim();
         if (_selectedDays.Count == 0) return;
+
+        var startTime = StartBox.Text.Trim();
+        var endTime = EndBox.Text.Trim();
+        if (!IsValidTime(startTime) || !IsValidTime(endTime))
+        {
+            AppNotifications.Show(Loc.T("notify.period.invalidtime.title"), Loc.T("notify.period.invalidtime.body"));
+            return;
+        }
 
         var period = new Period
         {
@@ -156,8 +218,8 @@ public partial class PeriodsPage : UserControl
             Enabled = true,
             Recurring = true,
             Days = _selectedDays.ToList(),
-            StartTime = string.IsNullOrWhiteSpace(StartBox.Text) ? "00:00" : StartBox.Text.Trim(),
-            EndTime = string.IsNullOrWhiteSpace(EndBox.Text) ? "00:00" : EndBox.Text.Trim(),
+            StartTime = startTime,
+            EndTime = endTime,
             HardMode = HardModeToggle.IsChecked == true,
             PomodoroMode = PomodoroModeToggle.IsChecked == true,
         };
@@ -176,5 +238,6 @@ public partial class PeriodsPage : UserControl
         HardModeToggle.IsChecked = false;
         PomodoroModeToggle.IsChecked = false;
         Render();
+        RenderSuggestion();
     }
 }

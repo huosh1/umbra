@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Threading;
 
 namespace Umbra.Core;
 
@@ -28,10 +29,16 @@ public class HistoryStats
     public int MonthMinutes { get; set; }
     public int AverageSessionMinutes { get; set; }
     public int StreakDays { get; set; }
+    public int BestStreakDays { get; set; }
     public int TotalSessions { get; set; }
     public int TotalMinutes { get; set; }
     public int BestDayMinutes { get; set; }
     public int LongestSessionMinutes { get; set; }
+    // Semaine calendaire précédente (lundi -> lundi), pour afficher une
+    // tendance ("+18%") à côté de WeekMinutes - 0 si aucune session n'a été
+    // faite cette semaine-là (la comparaison n'a alors pas de sens, l'appelant
+    // doit éviter le pourcentage plutôt que diviser par zéro).
+    public int PreviousWeekMinutes { get; set; }
 }
 
 public record QuestBreakdownRow(string QuestName, int Minutes);
@@ -44,6 +51,16 @@ public static class History
     public const string DefaultQuest = "Session de focus";
 
     private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
+
+    // Session.Stop() est appelé aussi bien depuis le GUI (clic Stop) que
+    // depuis le watchdog, process séparé (fin naturelle d'une session
+    // custom) - si les deux se déclenchent à quelques centaines de ms
+    // d'écart (l'utilisateur clique Stop pile quand le temps arrive à 0),
+    // chacun charge sa propre copie de history.json avant que l'autre
+    // n'écrive, et les deux Append() finissent par compter la même session
+    // deux fois. Un Mutex nommé (visible entre process, contrairement à un
+    // lock C# classique) sérialise les lectures-modifications-écritures.
+    private static readonly Mutex FileMutex = new(false, "UmbraNative_HistoryFileMutex");
 
     public static List<HistoryEntry> Load()
     {
@@ -61,7 +78,7 @@ public static class History
 
     public static void Save(List<HistoryEntry> entries)
     {
-        File.WriteAllText(Config.HistoryFile, JsonSerializer.Serialize(entries, JsonOptions));
+        AtomicFile.WriteAllText(Config.HistoryFile, JsonSerializer.Serialize(entries, JsonOptions));
     }
 
     // Efface tout l'historique de sessions (bouton "Effacer l'historique" des
@@ -74,18 +91,26 @@ public static class History
     public static void Append(string kind, bool hardMode, string questName, double focusedMinutes, long? endedAt = null)
     {
         if (focusedMinutes < 0.1) return; // rien à enregistrer, session quasi instantanée
-        var entries = Load();
-        entries.Add(new HistoryEntry
+        FileMutex.WaitOne();
+        try
         {
-            EndedAt = endedAt ?? DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
-            Kind = kind,
-            HardMode = hardMode,
-            QuestName = questName,
-            FocusedMinutes = Math.Round(focusedMinutes * 10) / 10,
-        });
-        // garde un historique raisonnable, pas la peine de grossir indéfiniment
-        var trimmed = entries.Count > 2000 ? entries.GetRange(entries.Count - 2000, 2000) : entries;
-        Save(trimmed);
+            var entries = Load();
+            entries.Add(new HistoryEntry
+            {
+                EndedAt = endedAt ?? DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+                Kind = kind,
+                HardMode = hardMode,
+                QuestName = questName,
+                FocusedMinutes = Math.Round(focusedMinutes * 10) / 10,
+            });
+            // garde un historique raisonnable, pas la peine de grossir indéfiniment
+            var trimmed = entries.Count > 2000 ? entries.GetRange(entries.Count - 2000, 2000) : entries;
+            Save(trimmed);
+        }
+        finally
+        {
+            FileMutex.ReleaseMutex();
+        }
     }
 
     private static DateTime ToLocal(long unixMs) => DateTimeOffset.FromUnixTimeMilliseconds(unixMs).ToLocalTime().DateTime;
@@ -126,14 +151,36 @@ public static class History
             cursor = cursor.AddDays(-1);
         }
 
-        // semaine en cours (lundi -> aujourd'hui)
+        // record : la plus longue série jamais atteinte, pas juste celle en
+        // cours - pour chaque jour qui démarre une série (son veille n'a
+        // aucune session), on avance tant que les jours suivants en ont une.
+        var activeDays = new HashSet<DateTime>(entries.Select(e => ToLocal(e.EndedAt).Date));
+        var bestStreak = 0;
+        foreach (var day in activeDays)
+        {
+            if (activeDays.Contains(day.AddDays(-1))) continue;
+            var length = 0;
+            var runCursor = day;
+            while (activeDays.Contains(runCursor))
+            {
+                length++;
+                runCursor = runCursor.AddDays(1);
+            }
+            bestStreak = Math.Max(bestStreak, length);
+        }
+
+        // semaine en cours (lundi -> aujourd'hui), et la semaine calendaire
+        // précédente (lundi -> lundi) pour la tendance affichée à côté.
         var dow = ((int)now.DayOfWeek + 6) % 7; // 0 = lundi
         var weekStart = now.Date.AddDays(-dow);
         var weekStartMs = new DateTimeOffset(weekStart).ToUnixTimeMilliseconds();
+        var previousWeekStartMs = new DateTimeOffset(weekStart.AddDays(-7)).ToUnixTimeMilliseconds();
         double weekMinutes = 0;
+        double previousWeekMinutes = 0;
         foreach (var e in entries)
         {
             if (e.EndedAt >= weekStartMs) weekMinutes += e.FocusedMinutes;
+            else if (e.EndedAt >= previousWeekStartMs) previousWeekMinutes += e.FocusedMinutes;
         }
 
         // mois civil en cours
@@ -157,10 +204,12 @@ public static class History
             MonthMinutes = (int)Math.Round(monthMinutes),
             AverageSessionMinutes = averageSessionMinutes,
             StreakDays = streak,
+            BestStreakDays = Math.Max(bestStreak, streak),
             TotalSessions = entries.Count,
             TotalMinutes = (int)Math.Round(entries.Sum(e => e.FocusedMinutes)),
             BestDayMinutes = minutesByDay.Count > 0 ? (int)Math.Round(minutesByDay.Values.Max()) : 0,
             LongestSessionMinutes = entries.Count > 0 ? (int)Math.Round(entries.Max(e => e.FocusedMinutes)) : 0,
+            PreviousWeekMinutes = (int)Math.Round(previousWeekMinutes),
         };
     }
 
@@ -277,18 +326,26 @@ public static class History
     {
         var trimmed = (newName ?? "").Trim();
         if (trimmed.Length == 0 || trimmed == oldName) return;
-        var entries = Load();
-        var changed = false;
-        foreach (var e in entries)
+        FileMutex.WaitOne();
+        try
         {
-            var current = string.IsNullOrWhiteSpace(e.QuestName) ? DefaultQuest : e.QuestName.Trim();
-            if (current == oldName)
+            var entries = Load();
+            var changed = false;
+            foreach (var e in entries)
             {
-                e.QuestName = trimmed;
-                changed = true;
+                var current = string.IsNullOrWhiteSpace(e.QuestName) ? DefaultQuest : e.QuestName.Trim();
+                if (current == oldName)
+                {
+                    e.QuestName = trimmed;
+                    changed = true;
+                }
             }
+            if (changed) Save(entries);
         }
-        if (changed) Save(entries);
+        finally
+        {
+            FileMutex.ReleaseMutex();
+        }
     }
 
     // "Retire" une quête de la répartition : les entrées concernées

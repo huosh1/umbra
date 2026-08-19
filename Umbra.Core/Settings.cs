@@ -26,6 +26,10 @@ public class AppSettings
     public List<string> RecentFloatingFocusBackgrounds { get; set; } = new();
     public double FloatingFocusBlur { get; set; } = 12;
     public bool ShowSessionTasks { get; set; } // désactivé par défaut, opt-in depuis Réglages
+    // Heure suggérée (History.GetSuggestedStartHour) que l'utilisateur a
+    // explicitement ignorée dans l'onglet Schedules - ne pas la reproposer
+    // tant que le pic d'usage reste sur cette même heure (voir PeriodsPage).
+    public int? DismissedSuggestedHour { get; set; }
 }
 
 public static class Settings
@@ -51,6 +55,6 @@ public static class Settings
 
     public static void Save(AppSettings data)
     {
-        File.WriteAllText(Config.SettingsFile, JsonSerializer.Serialize(data, Json.Options));
+        AtomicFile.WriteAllText(Config.SettingsFile, JsonSerializer.Serialize(data, Json.Options));
     }
 }

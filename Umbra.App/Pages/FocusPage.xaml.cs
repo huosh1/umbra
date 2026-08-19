@@ -15,6 +15,12 @@ public partial class FocusPage : System.Windows.Controls.UserControl
     private SessionTasksData _tasks = SessionTasks.Load();
     private bool _tasksPanelWasVisible;
 
+    // Hors hard mode, StopButton n'arrête plus au premier clic : ce champ
+    // retient l'heure à partir de laquelle le clic suivant confirme
+    // vraiment l'arrêt (voir RefreshSessionUi/StopButton_Click). null =
+    // aucune confirmation en attente.
+    private DateTime? _pendingStopUntil;
+
     // Suivi des transitions pour déclencher les sons de fin de session/pause
     // (Réglages) - même logique de garde que WatchdogLoop.Enforcer côté
     // Core : jamais de son au tout premier tick (une session déjà en cours
@@ -43,6 +49,7 @@ public partial class FocusPage : System.Windows.Controls.UserControl
         SchedulesTab.Header = Loc.T("focus.mode.schedules");
         FreeDurationLabel.Text = Loc.T("focus.free.duration");
         StopButton.Content = Loc.T("focus.stop");
+        CancelStopLink.Content = Loc.T("focus.stop.cancel");
         StartButton.Content = Loc.T("focus.start");
         PopoutButton.ToolTip = Loc.T("focus.popout");
 
@@ -163,8 +170,27 @@ public partial class FocusPage : System.Windows.Controls.UserControl
             SessionStatusText.Text = s.HardMode ? Loc.T("focus.status.active.hard") : Loc.T("focus.status.active");
             SessionTimeText.Text = $"{(int)remaining.TotalMinutes:D2}:{remaining.Seconds:D2}";
             var canStop = Session.CanStop(s);
-            StopButton.Content = canStop ? Loc.T("focus.stop") : Loc.T("focus.locked");
-            StopButton.IsEnabled = canStop;
+            if (!s.HardMode && _pendingStopUntil is { } until)
+            {
+                var secondsLeft = (int)Math.Ceiling((until - DateTime.Now).TotalSeconds);
+                if (secondsLeft > 0)
+                {
+                    StopButton.Content = string.Format(Loc.T("focus.stop.confirming"), secondsLeft);
+                    StopButton.IsEnabled = false;
+                }
+                else
+                {
+                    StopButton.Content = Loc.T("focus.stop.confirm");
+                    StopButton.IsEnabled = true;
+                }
+                CancelStopLink.Visibility = Visibility.Visible;
+            }
+            else
+            {
+                StopButton.Content = canStop ? Loc.T("focus.stop") : Loc.T("focus.locked");
+                StopButton.IsEnabled = canStop;
+                CancelStopLink.Visibility = Visibility.Collapsed;
+            }
             StopButton.Visibility = Visibility.Visible;
             var totalSeconds = Math.Max(1, (s.EndTs - s.StartTs) / 1000d);
             ActiveRingHost.Children.Clear();
@@ -174,6 +200,8 @@ public partial class FocusPage : System.Windows.Controls.UserControl
         }
         else if (activePeriod is not null)
         {
+            _pendingStopUntil = null;
+            CancelStopLink.Visibility = Visibility.Collapsed;
             double remainingSeconds, totalSeconds;
             if (activePeriod.PomodoroMode)
             {
@@ -196,6 +224,8 @@ public partial class FocusPage : System.Windows.Controls.UserControl
         }
         else
         {
+            _pendingStopUntil = null;
+            CancelStopLink.Visibility = Visibility.Collapsed;
             UpdatePreview();
         }
 
@@ -344,8 +374,18 @@ public partial class FocusPage : System.Windows.Controls.UserControl
         {
             Session.StartPomodoro(focusMin, restMin, repeats, hardMode, questName);
         }
-        WatchdogSupervisor.Ensure();
+        WarnIfWatchdogFailed(WatchdogSupervisor.Ensure());
         RefreshSessionUi();
+    }
+
+    // L'utilisateur vient de démarrer une session en pensant être protégé -
+    // si l'élévation UAC du watchdog a échoué (refusée ou autre), il n'y a
+    // aucun blocage réel alors que l'UI affiche une session active. Avant,
+    // cet échec était totalement silencieux (voir WatchdogSupervisor.Ensure).
+    private static void WarnIfWatchdogFailed(bool watchdogOk)
+    {
+        if (!watchdogOk)
+            AppNotifications.Show(Loc.T("notify.watchdog.failed.title"), Loc.T("notify.watchdog.failed.body"));
     }
 
     private void StartFreeSession(int minutes)
@@ -354,7 +394,7 @@ public partial class FocusPage : System.Windows.Controls.UserControl
         var questName = string.IsNullOrWhiteSpace(QuestNameBox.Text) ? Loc.T("focus.quest.default") : QuestNameBox.Text.Trim();
         ApplySelectedBlocklist();
         Session.StartCustom(minutes, hardMode, questName);
-        WatchdogSupervisor.Ensure();
+        WarnIfWatchdogFailed(WatchdogSupervisor.Ensure());
         RefreshSessionUi();
     }
 
@@ -369,7 +409,28 @@ public partial class FocusPage : System.Windows.Controls.UserControl
     {
         var s = Session.Load();
         if (!Session.CanStop(s)) return;
+
+        // Hors hard mode : premier clic = démarre le délai de 10s (voir
+        // RefreshSessionUi pour l'affichage du décompte), ne stoppe pas
+        // encore - dissuade un clic impulsif sans aller jusqu'au hard mode.
+        // Le hard mode a déjà son propre verrou via CanStop, pas besoin de
+        // ce délai en plus une fois qu'il autorise l'arrêt (session expirée).
+        if (!s.HardMode && _pendingStopUntil is null)
+        {
+            _pendingStopUntil = DateTime.Now.AddSeconds(10);
+            RefreshSessionUi();
+            return;
+        }
+        if (!s.HardMode && DateTime.Now < _pendingStopUntil) return; // bouton désactivé pendant le délai, filet de sécurité
+
         Session.Stop(s);
+        _pendingStopUntil = null;
+        RefreshSessionUi();
+    }
+
+    private void CancelStop_Click(object sender, RoutedEventArgs e)
+    {
+        _pendingStopUntil = null;
         RefreshSessionUi();
     }
 

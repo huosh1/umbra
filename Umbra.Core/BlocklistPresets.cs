@@ -41,7 +41,7 @@ public static class SavedBlocklists
             var json = File.ReadAllText(Config.SavedBlocklistsFile);
             var lists = JsonSerializer.Deserialize<List<SavedBlocklist>>(json, Json.Options) ?? new List<SavedBlocklist>();
             if (Normalize(lists))
-                File.WriteAllText(Config.SavedBlocklistsFile, JsonSerializer.Serialize(lists, Json.Options));
+                AtomicFile.WriteAllText(Config.SavedBlocklistsFile, JsonSerializer.Serialize(lists, Json.Options));
             return lists;
         }
         catch
@@ -53,7 +53,7 @@ public static class SavedBlocklists
     public static void Save(List<SavedBlocklist> lists)
     {
         Normalize(lists);
-        File.WriteAllText(Config.SavedBlocklistsFile, JsonSerializer.Serialize(lists, Json.Options));
+        AtomicFile.WriteAllText(Config.SavedBlocklistsFile, JsonSerializer.Serialize(lists, Json.Options));
     }
 
     private static bool Normalize(List<SavedBlocklist> lists)

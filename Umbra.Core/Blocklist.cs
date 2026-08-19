@@ -21,7 +21,7 @@ public static class Blocklist
             var originalSites = data.Sites?.ToList();
             Normalize(data);
             if (!SameValues(originalApps, data.Apps) || !SameValues(originalSites, data.Sites))
-                File.WriteAllText(Config.BlocklistFile, JsonSerializer.Serialize(data, Json.Options));
+                AtomicFile.WriteAllText(Config.BlocklistFile, JsonSerializer.Serialize(data, Json.Options));
             return data;
         }
         catch
@@ -32,7 +32,7 @@ public static class Blocklist
 
     public static void Save(BlocklistData data)
     {
-        File.WriteAllText(Config.BlocklistFile, JsonSerializer.Serialize(Normalize(data), Json.Options));
+        AtomicFile.WriteAllText(Config.BlocklistFile, JsonSerializer.Serialize(Normalize(data), Json.Options));
     }
 
     public static BlocklistData Normalize(BlocklistData data)

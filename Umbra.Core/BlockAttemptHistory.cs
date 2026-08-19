@@ -25,7 +25,17 @@ public static class BlockAttemptHistory
         }
         entry.Count++;
         entry.LastAttemptAt = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-        File.WriteAllText(Config.BlockAttemptsFile, JsonSerializer.Serialize(data, Json.Options));
+        // Le navigateur envoie un "target" arbitraire via Native Messaging à
+        // chaque tentative bloquée - une extension modifiée pourrait en
+        // forger des milliers de distincts pour faire grossir ce fichier
+        // sans limite. On ne garde que les plus pertinents (les plus
+        // fréquents/récents), jamais un vrai usage ne s'approche de ce seuil.
+        const int maxEntries = 500;
+        if (data.Count > maxEntries)
+        {
+            data = data.OrderByDescending(item => item.Count).ThenByDescending(item => item.LastAttemptAt).Take(maxEntries).ToList();
+        }
+        AtomicFile.WriteAllText(Config.BlockAttemptsFile, JsonSerializer.Serialize(data, Json.Options));
     }
 
     public static List<BlockAttempt> GetTop(int count) =>

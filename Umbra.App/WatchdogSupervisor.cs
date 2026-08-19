@@ -21,15 +21,21 @@ internal static class WatchdogSupervisor
         return age.TotalMilliseconds < WatchdogLoop.PollMs * 4;
     }
 
-    public static void Ensure()
+    // Renvoie false si l'élévation a échoué (UAC refusée, ou autre) - avant,
+    // cet échec était avalé silencieusement : l'utilisateur démarrait une
+    // session en pensant être protégé, sans blocage réel ni aucun signal.
+    // Les appelants où l'utilisateur vient d'agir explicitement (démarrer
+    // une session) doivent prévenir sur false ; les appels passifs
+    // (démarrage de l'app, etc.) peuvent ignorer la valeur de retour.
+    public static bool Ensure()
     {
-        if (IsAlive()) return;
+        if (IsAlive()) return true;
         DeleteSignalFile(Config.WatchdogStopRequestFile);
         DeleteSignalFile(Config.WatchdogStoppedFile);
         try
         {
             var exePath = Process.GetCurrentProcess().MainModule?.FileName;
-            if (exePath == null) return;
+            if (exePath == null) return false;
             Process.Start(new ProcessStartInfo
             {
                 FileName = exePath,
@@ -37,10 +43,12 @@ internal static class WatchdogSupervisor
                 UseShellExecute = true,
                 Verb = "runas", // déclenche l'invite UAC - échappatoire assumée du hard mode : le tuer depuis le Gestionnaire des tâches nécessite ces droits
             });
+            return true;
         }
         catch
         {
             // UAC refusée ou autre échec : pas de blocage tant que l'utilisateur ne relance pas manuellement
+            return false;
         }
     }
 

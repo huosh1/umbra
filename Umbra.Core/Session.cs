@@ -53,7 +53,7 @@ public static class Session
 
     public static void Save(SessionState s)
     {
-        File.WriteAllText(Config.SessionFile, JsonSerializer.Serialize(s, JsonOptions));
+        AtomicFile.WriteAllText(Config.SessionFile, JsonSerializer.Serialize(s, JsonOptions));
     }
 
     // Fait avancer une session pomodoro dont la phase en cours est terminée
