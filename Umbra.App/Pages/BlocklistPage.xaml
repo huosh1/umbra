@@ -31,6 +31,36 @@
             <WrapPanel x:Name="PresetsPanel" Margin="0,0,0,4" />
             <TextBlock x:Name="PresetFeedbackText" Visibility="Collapsed" Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}" FontSize="12" Margin="2,0,0,12" />
 
+            <TextBlock x:Name="AlwaysLabel" Style="{StaticResource SectionHeaderStyle}" Margin="0,0,0,8" />
+            <TextBlock x:Name="AlwaysDescText" FontSize="12" Opacity="0.6" Margin="0,0,0,8" TextWrapping="Wrap" />
+
+            <ui:CardExpander x:Name="AlwaysItemsExpander" Margin="0,0,0,20">
+                <ui:CardExpander.Icon>
+                    <ui:SymbolIcon Symbol="LockClosed24" />
+                </ui:CardExpander.Icon>
+                <ui:CardExpander.Header>
+                    <TextBlock x:Name="AlwaysItemsLabel" FontWeight="Normal" />
+                </ui:CardExpander.Header>
+                <StackPanel MinWidth="500">
+                    <DockPanel Margin="0,0,0,8">
+                        <ui:Button x:Name="AlwaysPickRunningAppButton" DockPanel.Dock="Right" Appearance="Secondary" Margin="8,0,0,0" Click="AlwaysPickRunningApp_Click">
+                            <ui:SymbolIcon Symbol="AppsListDetail24" />
+                        </ui:Button>
+                        <ui:Button x:Name="AlwaysAddItemButton" DockPanel.Dock="Right" Appearance="Secondary" Margin="8,0,0,0" Click="AlwaysAddItem_Click">
+                            <ui:SymbolIcon Symbol="Add24" />
+                        </ui:Button>
+                        <ComboBox x:Name="AlwaysItemTypeBox" DockPanel.Dock="Left" Width="150" Margin="0,0,8,0" SelectionChanged="AlwaysItemTypeBox_SelectionChanged">
+                            <ComboBoxItem x:Name="AlwaysApplicationTypeItem" Tag="app" />
+                            <ComboBoxItem x:Name="AlwaysWebsiteTypeItem" Tag="site" />
+                        </ComboBox>
+                        <ui:TextBox x:Name="AlwaysNewItemBox" HorizontalAlignment="Stretch" KeyDown="AlwaysNewItemBox_KeyDown" />
+                    </DockPanel>
+                    <ScrollViewer MaxHeight="300" VerticalScrollBarVisibility="Auto">
+                        <ItemsControl x:Name="AlwaysBlockedItemsList" />
+                    </ScrollViewer>
+                </StackPanel>
+            </ui:CardExpander>
+
             <TextBlock x:Name="BlocklistCoreLabel" Style="{StaticResource SectionHeaderStyle}" Margin="0,0,0,8" />
 
             <ui:CardExpander Margin="0,0,0,8">

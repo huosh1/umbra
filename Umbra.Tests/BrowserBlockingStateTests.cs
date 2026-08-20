@@ -34,4 +34,14 @@ public class BrowserBlockingStateTests : IDisposable
         Blocklist.Save(new BlocklistData { Sites = new List<string> { "youtube.com" } });
         Assert.False(BrowserBlockingState.GetCurrent().Blocking);
     }
+
+    [Fact]
+    public void GetCurrent_ReturnsAlwaysBlockedSites_EvenWithNoSessionOrPeriodActive()
+    {
+        AlwaysBlocklist.Save(new BlocklistData { Sites = new List<string> { "x.com", "tiktok.com" } });
+
+        var state = BrowserBlockingState.GetCurrent();
+        Assert.True(state.Blocking);
+        Assert.Equal(new[] { "tiktok.com", "x.com" }, state.Sites);
+    }
 }

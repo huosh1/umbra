@@ -9,7 +9,9 @@ public static class BrowserBlockingState
         var now = nowOpt ?? DateTime.Now;
         var sessionBlocking = Session.IsBlockingActive(Session.Load());
         var activePeriods = Periods.GetActivePeriods(Periods.Load(), now);
-        if (!sessionBlocking && activePeriods.Count == 0) return new BrowserBlockState(false, new());
+        // Indépendant de toute session/plage - voir AlwaysBlocklist.
+        var always = AlwaysBlocklist.Load();
+        if (!sessionBlocking && activePeriods.Count == 0 && always.Sites.Count == 0) return new BrowserBlockState(false, new());
 
         var sites = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         if (sessionBlocking)
@@ -20,6 +22,7 @@ public static class BrowserBlockingState
         {
             foreach (var site in period.Sites) AddSite(sites, site);
         }
+        foreach (var site in always.Sites) AddSite(sites, site);
         return new BrowserBlockState(true, sites.OrderBy(site => site, StringComparer.OrdinalIgnoreCase).ToList());
     }
 

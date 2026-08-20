@@ -13,10 +13,22 @@ public partial class BlocklistPage : UserControl
     private static Brush Res(string key) => (Brush)Application.Current.Resources[key];
     private BlocklistData _data = Blocklist.Load();
     private List<SavedBlocklist> _saved = SavedBlocklists.Load();
+    private BlocklistData _alwaysData = AlwaysBlocklist.Load();
 
     public BlocklistPage()
     {
         InitializeComponent();
+
+        AlwaysLabel.Text = Loc.T("blocklist.always");
+        AlwaysDescText.Text = Loc.T("blocklist.always.desc");
+        AlwaysItemsLabel.Text = Loc.T("blocklist.always.items");
+        AlwaysApplicationTypeItem.Content = Loc.T("blocklist.apps");
+        AlwaysWebsiteTypeItem.Content = Loc.T("blocklist.sites");
+        AlwaysAddItemButton.ToolTip = Loc.T("blocklist.add");
+        AlwaysPickRunningAppButton.ToolTip = Loc.T("blocklist.pick.running");
+        AlwaysItemTypeBox.SelectedIndex = 0;
+        UpdateAlwaysItemInput();
+        RenderAlways();
 
         PresetsLabel.Text = Loc.T("blocklist.presets");
         BlocklistCoreLabel.Text = Loc.T("blocklist.core");
@@ -324,5 +336,81 @@ public partial class BlocklistPage : UserControl
         _data.Sites.Remove(site);
         Blocklist.Save(_data);
         Render();
+    }
+
+    // --- Toujours bloqué (indépendant de toute session/plage, voir
+    // AlwaysBlocklist) - mêmes contrôles que la liste principale ci-dessus,
+    // juste une source de données et une sauvegarde différentes. Pas de
+    // recherche ici : pensée comme une courte liste délibérée, pas comme la
+    // liste de blocage "de travail" qui peut grossir avec chaque preset.
+
+    private bool IsAddingAlwaysApplication => AlwaysItemTypeBox.SelectedItem is ComboBoxItem { Tag: "app" };
+
+    private void AlwaysItemTypeBox_SelectionChanged(object sender, SelectionChangedEventArgs e) => UpdateAlwaysItemInput();
+
+    private void UpdateAlwaysItemInput()
+    {
+        if (AlwaysNewItemBox is null || AlwaysPickRunningAppButton is null) return;
+        AlwaysNewItemBox.PlaceholderText = Loc.T(IsAddingAlwaysApplication ? "blocklist.apps.placeholder" : "blocklist.sites.placeholder");
+        AlwaysPickRunningAppButton.Visibility = IsAddingAlwaysApplication ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void RenderAlways()
+    {
+        AlwaysBlockedItemsList.Items.Clear();
+        foreach (var app in _alwaysData.Apps)
+            AlwaysBlockedItemsList.Items.Add(BuildRow(app, SymbolRegular.AppsListDetail24, () => RemoveAlwaysApp(app)));
+        foreach (var site in _alwaysData.Sites)
+            AlwaysBlockedItemsList.Items.Add(BuildRow(site, SymbolRegular.Globe24, () => RemoveAlwaysSite(site)));
+    }
+
+    private void AlwaysAddItem_Click(object sender, RoutedEventArgs e) => AlwaysAddItem();
+    private void AlwaysNewItemBox_KeyDown(object sender, KeyEventArgs e) { if (e.Key == Key.Enter) AlwaysAddItem(); }
+
+    private void AlwaysAddItem()
+    {
+        var value = AlwaysNewItemBox.Text.Trim();
+        if (value.Length == 0) return;
+
+        var isWebsite = !IsAddingAlwaysApplication || Blocklist.TryNormalizeWebsiteInput(value, out _);
+        var target = isWebsite ? _alwaysData.Sites : _alwaysData.Apps;
+        if (isWebsite) value = Blocklist.NormalizeSiteInput(value);
+        if (target.Contains(value, StringComparer.OrdinalIgnoreCase)) return;
+        target.Add(value);
+        AlwaysBlocklist.Save(_alwaysData);
+        AlwaysNewItemBox.Text = "";
+        RenderAlways();
+    }
+
+    private void AlwaysPickRunningApp_Click(object sender, RoutedEventArgs e)
+    {
+        AlwaysItemTypeBox.SelectedIndex = 0;
+        string? picked;
+        try
+        {
+            picked = RunningAppsPickerWindow.Pick(Window.GetWindow(this));
+        }
+        catch (InvalidOperationException)
+        {
+            return;
+        }
+        if (picked is null || _alwaysData.Apps.Contains(picked, StringComparer.OrdinalIgnoreCase)) return;
+        _alwaysData.Apps.Add(picked);
+        AlwaysBlocklist.Save(_alwaysData);
+        RenderAlways();
+    }
+
+    private void RemoveAlwaysApp(string app)
+    {
+        _alwaysData.Apps.Remove(app);
+        AlwaysBlocklist.Save(_alwaysData);
+        RenderAlways();
+    }
+
+    private void RemoveAlwaysSite(string site)
+    {
+        _alwaysData.Sites.Remove(site);
+        AlwaysBlocklist.Save(_alwaysData);
+        RenderAlways();
     }
 }

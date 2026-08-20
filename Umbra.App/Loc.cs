@@ -104,6 +104,9 @@ public static class Loc
         ["periods.suggestion.create"] = ("Créer", "Create"),
         ["periods.suggestion.dismiss"] = ("Ignorer", "Dismiss"),
 
+        ["blocklist.always"] = ("Toujours bloqué", "Always blocked"),
+        ["blocklist.always.desc"] = ("Actif en permanence, même sans session ni plage en cours - pour ce que tu ne veux jamais pouvoir ouvrir.", "Always active, even with no session or schedule running - for things you never want to be able to open."),
+        ["blocklist.always.items"] = ("Bloqués en permanence", "Permanently blocked"),
         ["blocklist.apps"] = ("Applications", "Applications"),
         ["blocklist.items"] = ("Éléments bloqués", "Blocked items"),
         ["blocklist.apps.placeholder"] = ("nom.exe", "name.exe"),

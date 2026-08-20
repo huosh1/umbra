@@ -112,7 +112,13 @@ public static class WatchdogLoop
             // continue de tourner côté UI, seul le blocage s'arrête).
             var blockingPeriods = activePeriods.Where(p => !p.PomodoroMode || !Periods.GetPomodoroTiming(p, DateTime.Now).IsBreak).ToList();
             var sessionBlocking = Session.IsBlockingActive(s);
-            var shouldBlock = sessionBlocking || blockingPeriods.Count > 0;
+            // Indépendante de toute session/plage - "je ne veux jamais
+            // pouvoir aller sur X" (voir AlwaysBlocklist). Un Load() de plus
+            // par tick est négligeable : Blocklist.Load() tourne déjà tout
+            // aussi souvent dès qu'une session manuelle est active, sur un
+            // fichier tout aussi petit.
+            var always = AlwaysBlocklist.Load();
+            var shouldBlock = sessionBlocking || blockingPeriods.Count > 0 || always.Apps.Count > 0 || always.Sites.Count > 0;
 
             TrackPeriodHistory(s, activePeriods);
 
@@ -142,6 +148,8 @@ public static class WatchdogLoop
                     foreach (var a in p.Apps) apps.Add(a);
                     foreach (var st in p.Sites) sites.Add(st);
                 }
+                foreach (var a in always.Apps) apps.Add(a);
+                foreach (var st in always.Sites) sites.Add(st);
 
                 try
                 {

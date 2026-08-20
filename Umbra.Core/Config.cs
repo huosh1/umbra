@@ -24,6 +24,7 @@ public static class Config
     public static string HistoryFile => Path.Combine(DataDir, "history.json");
     public static string PeriodsFile => Path.Combine(DataDir, "periods.json");
     public static string BlocklistFile => Path.Combine(DataDir, "blocklist.json");
+    public static string AlwaysBlocklistFile => Path.Combine(DataDir, "always_blocklist.json");
     public static string SavedBlocklistsFile => Path.Combine(DataDir, "saved_blocklists.json");
     public static string SessionTasksFile => Path.Combine(DataDir, "session_tasks.json");
     public static string MusicHistoryFile => Path.Combine(DataDir, "music_history.json");
