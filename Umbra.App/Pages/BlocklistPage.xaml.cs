@@ -380,6 +380,11 @@ public partial class BlocklistPage : UserControl
         AlwaysBlocklist.Save(_alwaysData);
         AlwaysNewItemBox.Text = "";
         RenderAlways();
+        // Sans session ni plage, rien d'autre ne déclenche le watchdog - sans
+        // cet appel, une première entrée ajoutée pendant que l'app tourne
+        // déjà (watchdog jamais lancé) resterait sans effet jusqu'au prochain
+        // redémarrage de l'app.
+        WatchdogSupervisor.Ensure();
     }
 
     private void AlwaysPickRunningApp_Click(object sender, RoutedEventArgs e)
@@ -398,6 +403,7 @@ public partial class BlocklistPage : UserControl
         _alwaysData.Apps.Add(picked);
         AlwaysBlocklist.Save(_alwaysData);
         RenderAlways();
+        WatchdogSupervisor.Ensure();
     }
 
     private void RemoveAlwaysApp(string app)

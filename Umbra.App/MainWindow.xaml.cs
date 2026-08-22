@@ -34,7 +34,13 @@ public partial class MainWindow : FluentWindow
         InitializeComponent();
         Title = "Umbra";
 
-        if (Periods.HasEnabledPeriod(Periods.Load()))
+        // "Toujours bloqué" (AlwaysBlocklist) n'a besoin ni d'une session ni
+        // d'une plage pour être pertinent - sans ce check, un utilisateur qui
+        // n'a QUE des entrées permanentes (aucune plage activée) ne voyait
+        // jamais le watchdog se lancer au démarrage, et le blocage restait
+        // inerte tant qu'aucune session/plage ne le déclenchait par ailleurs.
+        var always = AlwaysBlocklist.Load();
+        if (Periods.HasEnabledPeriod(Periods.Load()) || always.Apps.Count > 0 || always.Sites.Count > 0)
         {
             WatchdogSupervisor.Ensure();
         }
